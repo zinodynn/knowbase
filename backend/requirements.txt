@@ -1,0 +1,38 @@
+# FastAPI 核心
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# 数据库
+sqlalchemy==2.0.23
+alembic==1.12.1
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+
+# Redis
+redis==5.0.1
+
+# 安全认证
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==41.0.7
+
+# 配置管理
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+
+# 对象存储
+minio==7.2.0
+
+# 向量数据库客户端
+qdrant-client==1.7.0
+
+# 异步任务
+celery==5.3.4
+
+# HTTP 客户端
+httpx==0.25.2
+
+# 工具
+python-dateutil==2.8.2
