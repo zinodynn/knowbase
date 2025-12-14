@@ -1,0 +1,51 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/Scripts/python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/backend"
+    ],
+    "python.envFile": "${workspaceFolder}/backend/.env",
+    
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "tests",
+        "-v"
+    ],
+    "python.testing.cwd": "${workspaceFolder}/backend",
+    
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/htmlcov": true,
+        "**/.coverage": true
+    },
+    
+    "files.associations": {
+        "*.env*": "dotenv",
+        "docker-compose*.yml": "yaml"
+    },
+    
+    "editor.rulers": [88, 120],
+    "editor.tabSize": 4,
+    
+    "terminal.integrated.cwd": "${workspaceFolder}/backend",
+    
+    "rest-client.environmentVariables": {
+        "$shared": {
+            "baseUrl": "http://localhost:8000/api/v1"
+        },
+        "local": {
+            "token": ""
+        }
+    },
+    "python-envs.pythonProjects": []
+}

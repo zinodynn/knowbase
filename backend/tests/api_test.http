@@ -1,0 +1,309 @@
+# KnowBase API 测试文件
+# 使用 VS Code REST Client 扩展运行测试
+# 安装扩展: humao.rest-client
+
+@baseUrl = http://localhost:8000/api/v1
+@contentType = application/json
+
+### ==================== 健康检查 ====================
+
+### 健康检查
+GET http://localhost:8000/health
+
+### 根路径
+GET http://localhost:8000/
+
+### API 文档
+# 在浏览器中打开: http://localhost:8000/docs
+
+### ==================== 认证 API ====================
+
+### 用户注册
+POST {{baseUrl}}/auth/register
+Content-Type: {{contentType}}
+
+{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "test123456",
+    "full_name": "Test User"
+}
+
+### 用户登录
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+    "username": "admin",
+    "password": "admin123"
+}
+### 其他用户登录
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+    "username": "testuser",
+    "password": "test123456"
+}
+
+### 保存 token
+@token = {{login.response.body.access_token}}
+@refreshToken = {{login.response.body.refresh_token}}
+
+### 获取当前用户信息
+# @name me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+# 获取用户 ID
+@userId = {{me.response.body.id}}
+
+### 刷新令牌
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+    "refresh_token": "{{refreshToken}}"
+}
+
+### 修改密码
+POST {{baseUrl}}/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "old_password": "admin123",
+    "new_password": "newpassword123"
+}
+
+### ==================== 用户管理 API ====================
+
+### 获取用户列表 (需要管理员权限)
+GET {{baseUrl}}/users?skip=0&limit=10
+Authorization: Bearer {{token}}
+
+### 获取用户总数 (需要管理员权限)
+GET {{baseUrl}}/users/count
+Authorization: Bearer {{token}}
+
+### 创建用户 (需要管理员权限)
+POST {{baseUrl}}/users
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "username": "newuser",
+    "email": "newuser@example.com",
+    "password": "password123",
+    "full_name": "New User",
+    "is_active": true,
+    "is_superuser": false
+}
+
+### 获取指定用户
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{token}}
+
+### 更新用户
+PUT {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "full_name": "Updated Name"
+}
+
+### ==================== 知识库 API ====================
+
+### 获取知识库列表
+GET {{baseUrl}}/knowledge-bases?skip=0&limit=20&include_public=true
+Authorization: Bearer {{token}}
+
+### 创建知识库
+# @name createKb
+POST {{baseUrl}}/knowledge-bases
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "name": "测试知识库",
+    "description": "这是一个用于测试的知识库",
+    "visibility": "private",
+    "embedding_model_info": {"model": "text-embedding-ada-002", "dimension": 1536},
+    "tags": ["测试", "开发"]
+}
+
+### 保存知识库 ID
+@kbId = {{createKb.response.body.id}}
+
+### 获取知识库详情
+GET {{baseUrl}}/knowledge-bases/{{kbId}}
+Authorization: Bearer {{token}}
+
+### 更新知识库
+PUT {{baseUrl}}/knowledge-bases/{{kbId}}
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "name": "更新后的知识库名称",
+    "description": "更新后的描述",
+    "visibility": "public",
+    "tags": ["更新", "测试"]
+}
+
+### 获取知识库统计
+GET {{baseUrl}}/knowledge-bases/{{kbId}}/stats
+Authorization: Bearer {{token}}
+
+### 删除知识库
+DELETE {{baseUrl}}/knowledge-bases/{{kbId}}
+Authorization: Bearer {{token}}
+
+### ==================== API Key 管理 ====================
+
+### 获取 API Key 列表
+GET {{baseUrl}}/api-keys?skip=0&limit=20
+Authorization: Bearer {{token}}
+
+### 创建 API Key
+# @name createApiKey
+POST {{baseUrl}}/api-keys
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "name": "测试 API Key",
+    "description": "用于测试的 API Key",
+    "expires_days": 30
+}
+
+### 保存 API Key
+@apiKeyId = {{createApiKey.response.body.id}}
+@apiKey = {{createApiKey.response.body.api_key}}
+
+### 使用 API Key 进行认证
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{apiKey}}
+
+### 获取 API Key 详情
+GET {{baseUrl}}/api-keys/{{apiKeyId}}
+Authorization: Bearer {{token}}
+
+### 更新 API Key
+PUT {{baseUrl}}/api-keys/{{apiKeyId}}
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "name": "更新的 API Key 名称",
+    "description": "更新的描述"
+}
+
+### 吊销 API Key
+POST {{baseUrl}}/api-keys/{{apiKeyId}}/revoke
+Authorization: Bearer {{token}}
+
+### 删除 API Key
+DELETE {{baseUrl}}/api-keys/{{apiKeyId}}
+Authorization: Bearer {{token}}
+
+### ==================== 权限管理 API ====================
+
+### 获取知识库权限列表
+GET {{baseUrl}}/knowledge-bases/{{kbId}}/permissions?skip=0&limit=20
+Authorization: Bearer {{token}}
+
+### 添加知识库权限
+POST {{baseUrl}}/knowledge-bases/{{kbId}}/permissions
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "user_id": "用户UUID",
+    "permission": "read"
+}
+
+### 更新知识库权限
+PUT {{baseUrl}}/knowledge-bases/{{kbId}}/permissions/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "permission": "write"
+}
+
+### 删除知识库权限
+DELETE {{baseUrl}}/knowledge-bases/{{kbId}}/permissions/{{userId}}
+Authorization: Bearer {{token}}
+
+### 获取我的所有权限
+GET {{baseUrl}}/my-permissions
+Authorization: Bearer {{token}}
+
+### ==================== 模型配置 API ====================
+
+### 获取模型配置列表
+GET {{baseUrl}}/model-configs?skip=0&limit=20
+Authorization: Bearer {{token}}
+
+### 获取所有默认配置
+GET {{baseUrl}}/model-configs/defaults/all
+Authorization: Bearer {{token}}
+
+### 创建模型配置 (需要管理员权限)
+# @name createModelConfig
+POST {{baseUrl}}/model-configs
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "name": "OpenAI Embedding",
+    "description": "OpenAI 的文本嵌入模型配置",
+    "model_type": "embedding",
+    "provider": "openai",
+    "model_name": "text-embedding-ada-002",
+    "api_url": "https://api.openai.com/v1",
+    "api_key": "sk-your-api-key",
+    "is_default": true,
+    "extra_params": {
+        "dimension": 1536
+    }
+}
+
+### 保存配置 ID
+@configId = {{createModelConfig.response.body.id}}
+
+### 获取模型配置详情
+GET {{baseUrl}}/model-configs/{{configId}}
+Authorization: Bearer {{token}}
+
+### 更新模型配置 (需要管理员权限)
+PUT {{baseUrl}}/model-configs/{{configId}}
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "name": "更新的配置名称",
+    "api_key": "sk-new-api-key",
+    "api_base": "https://api.openai.com/v1"
+}
+
+### 测试模型配置 (需要管理员权限)
+POST {{baseUrl}}/model-configs/{{configId}}/test
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+    "test_input": "Hello, World!"
+}
+
+### 设为默认配置 (需要管理员权限)
+POST {{baseUrl}}/model-configs/{{configId}}/set-default
+Authorization: Bearer {{token}}
+
+### 删除模型配置 (需要管理员权限)
+DELETE {{baseUrl}}/model-configs/{{configId}}
+Authorization: Bearer {{token}}

@@ -1,38 +1,23 @@
 """
-Alembic 环境配置
-支持异步数据库迁移
+Alembic environment configuration
+Uses synchronous engine for migrations with psycopg2
 """
-import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from alembic import context
-
-# 导入配置和模型
+# Import config and models
 from app.core.config import settings
 from app.core.database import Base
+# Import all models to ensure they are registered
+from app.models import (ApiKey, Chunk, Document, KBTag, KnowledgeBase,
+                        ModelConfig, User, UserKBPermission)
+from sqlalchemy import engine_from_config, pool
 
-# 导入所有模型以确保它们被注册
-from app.models import (
-    User,
-    KnowledgeBase,
-    KBTag,
-    Document,
-    Chunk,
-    ApiKey,
-    UserKBPermission,
-    ModelConfig,
-)
-
-
-# Alembic 配置对象
+# Alembic config object
 config = context.config
 
-# 设置数据库 URL
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+asyncpg", ""))
+# Set database URL (use sync URL for migrations)
+config.set_main_option("sqlalchemy.url", settings.database_url_sync)
 
 # 配置日志
 if config.config_file_name is not None:
@@ -59,39 +44,29 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    """执行迁移"""
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        compare_type=True,
-        compare_server_default=True,
-    )
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-async def run_async_migrations() -> None:
-    """异步运行迁移"""
-    connectable = async_engine_from_config(
+def run_migrations_online() -> None:
+    """
+    Online mode: run migrations with database connection
+    Uses synchronous engine for compatibility with psycopg2
+    """
+    connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
+        )
 
-    await connectable.dispose()
+        with context.begin_transaction():
+            context.run_migrations()
 
-
-def run_migrations_online() -> None:
-    """
-    在线模式运行迁移
-    需要数据库连接
-    """
-    asyncio.run(run_async_migrations())
+    connectable.dispose()
 
 
 if context.is_offline_mode():

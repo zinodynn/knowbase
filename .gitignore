@@ -1,5 +1,26 @@
-# Uploaded files
-temp/
+# KnowBase 项目根目录 .gitignore
 
-# prompt
-.rules/
+# 临时文件
+temp/
+tmp/
+
+# 环境文件
+.env
+*.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# 日志
+*.log
+logs/

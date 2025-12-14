@@ -1,19 +1,25 @@
 """
 用户相关 Schema
 """
+
+import re
 import uuid
 from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
-import re
 
 
 class UserBase(BaseModel):
     """用户基础信息"""
+
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     email: EmailStr = Field(..., description="邮箱")
     full_name: Optional[str] = Field(None, max_length=100, description="全名")
-    
+
+    is_active: Optional[bool] = Field(None, description="是否激活")
+    is_superuser: Optional[bool] = Field(None, description="是否超级用户")
+
     @field_validator("username")
     @classmethod
     def username_alphanumeric(cls, v: str) -> str:
@@ -24,8 +30,9 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """用户创建"""
+
     password: str = Field(..., min_length=6, max_length=100, description="密码")
-    
+
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:
@@ -36,11 +43,12 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """用户更新"""
+
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=100)
     avatar_url: Optional[str] = None
-    
+
     @field_validator("username")
     @classmethod
     def username_alphanumeric(cls, v: Optional[str]) -> Optional[str]:
@@ -51,6 +59,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     """用户响应"""
+
     id: uuid.UUID
     avatar_url: Optional[str] = None
     is_active: bool
@@ -58,11 +67,13 @@ class UserResponse(UserBase):
     created_at: datetime
     updated_at: datetime
     last_login_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
 
 
 class UserInDB(UserResponse):
     """数据库中的用户（包含哈希密码）"""
+
+    hashed_password: str
     hashed_password: str
