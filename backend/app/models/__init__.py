@@ -2,12 +2,15 @@
 数据模型初始化
 导出所有模型
 """
-from app.models.user import User
-from app.models.knowledge_base import KnowledgeBase, KBTag, KBVisibility
-from app.models.document import Document, Chunk, DocumentStatus, DocumentSourceType
+
 from app.models.api_key import ApiKey
-from app.models.permission import UserKBPermission, PermissionLevel
-from app.models.model_config import ModelConfig, ConfigType
+from app.models.document import Chunk, Document, DocumentSourceType, DocumentStatus
+from app.models.knowledge_base import KBTag, KBVisibility, KnowledgeBase
+from app.models.model_config import ConfigType, ModelConfig
+from app.models.permission import PermissionLevel, UserKBPermission
+from app.models.processing import ModelCallLog, ProcessingTask
+from app.models.user import User
+from app.models.vcs import KBProcessingConfig, KBVersion, VCSConfig
 
 __all__ = [
     # 用户
@@ -29,4 +32,11 @@ __all__ = [
     # 模型配置
     "ModelConfig",
     "ConfigType",
+    # Phase 2: 处理任务
+    "ProcessingTask",
+    "ModelCallLog",
+    # Phase 2: VCS
+    "VCSConfig",
+    "KBVersion",
+    "KBProcessingConfig",
 ]

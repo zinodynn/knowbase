@@ -51,12 +51,11 @@ class Document(Base):
         nullable=False,
         index=True,
     )
-    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     file_name: Mapped[str] = mapped_column(String(500), nullable=False)
     file_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     file_size: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    file_path: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
-    file_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    storage_path: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     content_hash: Mapped[Optional[str]] = mapped_column(
         String(64), nullable=True, index=True
     )
@@ -73,7 +72,9 @@ class Document(Base):
     )
     chunk_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSON, nullable=True)
+    doc_metadata: Mapped[Optional[dict]] = mapped_column(
+        "metadata", JSON, nullable=True
+    )
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -96,6 +97,12 @@ class Document(Base):
     )
     chunks: Mapped[List["Chunk"]] = relationship(
         "Chunk",
+        back_populates="document",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    processing_tasks = relationship(
+        "ProcessingTask",
         back_populates="document",
         lazy="selectin",
         cascade="all, delete-orphan",
@@ -133,7 +140,9 @@ class Chunk(Base):
     vector_id: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, index=True
     )
-    metadata_: Mapped[Optional[dict]] = mapped_column("metadata", JSON, nullable=True)
+    doc_metadata: Mapped[Optional[dict]] = mapped_column(
+        "metadata", JSON, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

@@ -82,6 +82,26 @@ class KnowledgeBase(Base):
         cascade="all, delete-orphan",
     )
 
+    # Phase 2 关系
+    vcs_config = relationship(
+        "VCSConfig",
+        back_populates="knowledge_base",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    versions = relationship(
+        "KBVersion",
+        back_populates="knowledge_base",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+    processing_config = relationship(
+        "KBProcessingConfig",
+        back_populates="knowledge_base",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return f"<KnowledgeBase(id={self.id}, name={self.name})>"
 

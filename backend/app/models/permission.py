@@ -61,4 +61,3 @@ class UserKBPermission(Base):
 
     def __repr__(self) -> str:
         return f"<UserKBPermission(user_id={self.user_id}, kb_id={self.kb_id}, permission={self.permission})>"
-        return f"<UserKBPermission(user_id={self.user_id}, kb_id={self.kb_id}, permission={self.permission})>"

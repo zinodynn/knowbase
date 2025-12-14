@@ -177,3 +177,69 @@ async def get_optional_current_user(
         return await get_current_user(credentials, db)
     except HTTPException:
         return None
+
+
+async def check_kb_permission(
+    db: AsyncSession,
+    kb_id: uuid.UUID,
+    user: User,
+    require_write: bool = False,
+):
+    """
+    检查用户对知识库的权限
+
+    Args:
+        db: 数据库会话
+        kb_id: 知识库 ID
+        user: 当前用户
+        require_write: 是否需要写权限
+
+    Returns:
+        KnowledgeBase 对象
+
+    Raises:
+        HTTPException: 权限不足或知识库不存在
+    """
+    from app.models import KnowledgeBase, PermissionLevel, UserKBPermission
+
+    # 获取知识库
+    result = await db.execute(select(KnowledgeBase).where(KnowledgeBase.id == kb_id))
+    kb = result.scalar_one_or_none()
+
+    if not kb:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Knowledge base not found",
+        )
+
+    # 超级管理员拥有所有权限
+    if user.is_superuser:
+        return kb
+
+    # 所有者拥有所有权限
+    if kb.owner_id == user.id:
+        return kb
+
+    # 检查权限表
+    result = await db.execute(
+        select(UserKBPermission).where(
+            UserKBPermission.kb_id == kb_id,
+            UserKBPermission.user_id == user.id,
+        )
+    )
+    permission = result.scalar_one_or_none()
+
+    if not permission:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this knowledge base",
+        )
+
+    # 检查写权限
+    if require_write and permission.level == PermissionLevel.READ:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Write permission required",
+        )
+
+    return kb
