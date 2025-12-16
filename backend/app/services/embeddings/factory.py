@@ -40,6 +40,9 @@ class EmbeddingFactory:
         if config.provider == EmbeddingProvider.OPENAI:
             return OpenAIEmbeddingService(config)
 
+        elif config.provider == EmbeddingProvider.QWEN:
+            return OpenAIEmbeddingService(config)
+
         elif config.provider == EmbeddingProvider.AZURE:
             return AzureEmbeddingService(config)
 
@@ -76,7 +79,7 @@ class EmbeddingFactory:
             dimension=model_config.get("embedding_dimension", 1536),
             azure_endpoint=model_config.get("azure_endpoint"),
             azure_deployment=model_config.get("azure_deployment"),
-            api_version=model_config.get("api_version", "2024-02-01"),
+            azure_api_version=model_config.get("azure_api_version", "2024-02-01"),
             timeout=model_config.get("timeout", 30),
             max_retries=model_config.get("max_retries", 3),
             batch_size=model_config.get("batch_size", 100),

@@ -3,12 +3,14 @@ API v1 路由汇总
 """
 
 from app.api.v1 import (
+    admin,
     api_keys,
     auth,
     documents,
     knowledge_bases,
     model_configs,
     permissions,
+    search,
     users,
 )
 from fastapi import APIRouter
@@ -39,3 +41,9 @@ api_router.include_router(
 
 # 文档管理路由
 api_router.include_router(documents.router, prefix="", tags=["文档管理"])
+
+# 搜索路由
+api_router.include_router(search.router, prefix="", tags=["搜索"])
+
+# 管理员路由
+api_router.include_router(admin.router, prefix="", tags=["管理员"])

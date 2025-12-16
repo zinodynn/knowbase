@@ -87,6 +87,34 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
     QDRANT_API_KEY: Optional[str] = None
 
+    @property
+    def QDRANT_URL(self) -> str:
+        """获取 Qdrant 连接 URL"""
+        return f"http://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
+
+    # Embedding 配置
+    EMBEDDING_PROVIDER: str = "openai"  # openai, azure, qwen, private
+    EMBEDDING_API_BASE: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    EMBEDDING_MODEL: str = "text-embedding-v2"
+    EMBEDDING_API_KEY: Optional[str] = None
+    EMBEDDING_DIMENSION: int = 1536
+
+    # Azure Embedding 配置（可选）
+    AZURE_ENDPOINT: Optional[str] = None
+    AZURE_API_KEY: Optional[str] = None
+    AZURE_API_VERSION: str = "2024-02-01"
+    AZURE_EMBEDDING_DEPLOYMENT: Optional[str] = None
+
+    # Rerank 配置
+    RERANK_PROVIDER: str = "cohere"  # cohere, jina, local, llm
+    COHERE_API_KEY: Optional[str] = None
+    JINA_API_KEY: Optional[str] = None
+    RERANK_MODEL: Optional[str] = None  # 使用默认模型
+
+    # OpenAI 配置（用于 LLM Rerank 等）
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+
     # 安全配置
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ENCRYPTION_KEY: str = "your-encryption-key-change-in-production"

@@ -9,7 +9,7 @@ from enum import Enum
 from app.core.database import Base
 from sqlalchemy import DateTime
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

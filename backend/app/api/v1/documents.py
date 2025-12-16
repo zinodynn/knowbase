@@ -378,12 +378,12 @@ async def reprocess_documents(
 
         # 重置状态
         document.status = DocumentStatus.PENDING
-        document.error_message = None
+        # document.error_message = None
 
         responses.append(
             DocumentUploadResponse(
                 id=doc_id,
-                filename=document.filename,
+                filename=document.file_name,
                 status=DocumentStatus.PENDING,
                 message="Document queued for reprocessing",
             )
@@ -437,7 +437,7 @@ async def get_download_url(
 
     return {
         "url": url,
-        "filename": document.filename,
+        "filename": document.file_name,
         "expires_in_hours": expires_hours,
     }
 

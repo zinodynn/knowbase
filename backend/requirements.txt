@@ -45,3 +45,10 @@ python-docx==1.1.0
 openpyxl==3.1.2
 beautifulsoup4==4.12.2
 PyYAML==6.0.1
+
+# NLP / Embedding（可选，用于本地模型）
+# sentence-transformers==2.2.2  # 取消注释以使用本地 rerank 模型
+# tiktoken==0.5.2  # 取消注释以使用 OpenAI tokenizer
+
+# Elasticsearch（可选）
+# elasticsearch==8.11.1  # 取消注释以使用 Elasticsearch

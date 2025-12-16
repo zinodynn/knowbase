@@ -9,6 +9,10 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from app.core.config import get_settings
+
+settings = get_settings()
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,6 +21,7 @@ class EmbeddingProvider(str, Enum):
 
     OPENAI = "openai"
     AZURE = "azure"
+    QWEN = "qwen"  # 自定义 API（兼容 OpenAI 格式）
     CUSTOM = "custom"  # 自定义 API（兼容 OpenAI 格式）
 
 
@@ -24,16 +29,17 @@ class EmbeddingProvider(str, Enum):
 class EmbeddingConfig:
     """Embedding 服务配置"""
 
-    provider: EmbeddingProvider = EmbeddingProvider.OPENAI
-    api_key: str = ""
-    api_base: Optional[str] = None  # API 基础 URL
-    model: str = "text-embedding-3-small"  # 模型名称
-    dimension: int = 1536  # 向量维度
+    provider: EmbeddingProvider = EmbeddingProvider.OPENAI  # 提供商
+    api_key: str = settings.EMBEDDING_API_KEY  # API 密钥
+    api_base: Optional[str] = settings.EMBEDDING_API_BASE  # API 基础 URL
+    model: str = settings.EMBEDDING_MODEL  # 模型名称
+    dimension: int = settings.EMBEDDING_DIMENSION  # 向量维度
 
     # Azure 特有配置
-    azure_endpoint: Optional[str] = None
-    azure_deployment: Optional[str] = None
-    api_version: str = "2024-02-01"
+    azure_endpoint: Optional[str] = settings.AZURE_ENDPOINT
+    azure_deployment: Optional[str] = settings.AZURE_EMBEDDING_DEPLOYMENT
+    azure_api_version: str = settings.AZURE_API_VERSION
+    azure_api_key: str = settings.AZURE_API_KEY
 
     # 请求配置
     timeout: int = 30  # 超时时间（秒）

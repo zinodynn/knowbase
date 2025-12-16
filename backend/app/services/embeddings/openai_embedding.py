@@ -72,7 +72,7 @@ class OpenAIEmbeddingService(BaseEmbeddingService):
     def _get_embedding_url(self) -> str:
         """获取 embedding API URL"""
         if self.config.provider == EmbeddingProvider.AZURE:
-            return f"{self.api_base}/embeddings?api-version={self.config.api_version}"
+            return f"{self.api_base}/embeddings?api-version={self.config.azure_api_version}"
         else:
             return f"{self.api_base}/embeddings"
 
