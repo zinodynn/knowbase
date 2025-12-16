@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     @property
     def redis_url(self) -> str:
         """获取 Redis 连接 URL"""
-        if self.REDIS_URL:
+        if self.REDIS_URL and not self.REDIS_PASSWORD:
             return self.REDIS_URL
         if self.REDIS_PASSWORD:
             return (

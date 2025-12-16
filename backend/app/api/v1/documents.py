@@ -29,6 +29,11 @@ from app.schemas.document import (
     SearchResponse,
 )
 from app.services import ParserFactory, get_storage_service
+from app.tasks import (
+    delete_document_vectors_task,
+    process_document_task,
+    reprocess_failed_documents_task,
+)
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,9 +132,9 @@ async def upload_documents(
 
     await db.commit()
 
-    # TODO: 触发异步处理任务
-    # for doc in uploaded:
-    #     process_document_task.delay(str(doc.id))
+    # 触发异步处理任务
+    for doc in uploaded:
+        process_document_task.delay(str(doc.id))
 
     return BatchUploadResponse(
         uploaded=uploaded,
@@ -192,7 +197,8 @@ async def push_document(
     db.add(document)
     await db.commit()
 
-    # TODO: 触发异步处理任务
+    # 触发异步处理任务
+    process_document_task.delay(str(document_id))
 
     return DocumentUploadResponse(
         id=document_id,
@@ -323,7 +329,8 @@ async def delete_document(
         except Exception as e:
             logger.warning(f"Failed to delete file from storage: {e}")
 
-    # TODO: 删除向量数据库中的向量
+    # 删除向量数据库中的向量
+    delete_document_vectors_task.delay(str(doc_id), str(document.kb_id))
 
     # 删除分块（通过级联删除）
     # 删除文档
@@ -391,7 +398,10 @@ async def reprocess_documents(
 
     await db.commit()
 
-    # TODO: 触发异步处理任务
+    # 触发异步重新处理任务（强制模式）
+    for resp in responses:
+        if resp.status == DocumentStatus.PENDING:
+            process_document_task.delay(str(resp.id), force=True)
 
     return responses
 

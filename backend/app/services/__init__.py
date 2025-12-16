@@ -9,6 +9,10 @@ from app.services.chunker import (
     DocumentChunker,
     create_chunker,
 )
+from app.services.document_processor import (  # ProcessingConfig,
+    DocumentProcessor,
+    ProcessingResult,
+)
 from app.services.embeddings import (
     BaseEmbeddingService,
     EmbeddingConfig,
@@ -51,4 +55,8 @@ __all__ = [
     "VectorRecord",
     "SearchResult",
     "QdrantVectorStore",
+    # Document Processor
+    "DocumentProcessor",
+    # "ProcessingConfig",
+    "ProcessingResult",
 ]
