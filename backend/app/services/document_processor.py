@@ -142,20 +142,20 @@ class DocumentProcessor:
 
             # 3. 从存储下载文档
             logger.info(f"Downloading document: {document.file_name}")
-            content_bytes = await self.storage.download_bytes(document.storage_path)
+            content_bytes = await self.storage.download_file(document.storage_path)
 
             # 4. 解析文档
             logger.info(f"Parsing document: {document.file_name}")
-            parser = ParserFactory.create(document.file_name)
+            parser = ParserFactory.get_parser(document.file_name)
             parsed_content = await parser.parse_bytes(content_bytes, document.file_name)
 
-            if not parsed_content.text:
+            if not parsed_content.content:
                 raise ValueError("Failed to extract text from document")
 
             # 5. 分块
             logger.info(f"Chunking document: {document.file_name}")
             chunks = self.chunker.chunk(
-                text=parsed_content.text,
+                text=parsed_content.content,
                 metadata={
                     "document_id": str(document.id),
                     "kb_id": str(document.kb_id),
@@ -288,7 +288,9 @@ class DocumentProcessor:
         collection_name = self._get_collection_name(document.kb_id)
 
         # 确保集合存在
-        if not await self.vector_store.collection_exists(collection_name):
+        if not await self.vector_store.collection_exists(
+            collection_name
+        ):  # TODO: fix Unexpected Response: 502 (Bad Gateway)\nRaw response content:\nb''")
             await self.vector_store.create_collection(
                 collection_name=collection_name,
                 dimension=self.embedding_config.dimension,

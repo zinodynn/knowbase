@@ -110,12 +110,55 @@
                 "ENVIRONMENT": "test"
             },
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Celery: Worker (Document Queue)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "args": [
+                "-A", "app.tasks.celery_app",
+                "worker",
+                "--loglevel=info",
+                "-Q", "default,document",
+                "-P", "solo"
+            ],
+            "cwd": "${workspaceFolder}/backend",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            },
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Celery: Flower Monitor",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "args": [
+                "-A", "app.tasks.celery_app",
+                "flower",
+                "--port=5555"
+            ],
+            "cwd": "${workspaceFolder}/backend",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            },
+            "console": "integratedTerminal"
         }
     ],
     "compounds": [
         {
             "name": "Full Stack: Backend + Docker Services",
             "configurations": ["FastAPI: Backend"],
+            "preLaunchTask": "docker-compose-up",
+            "stopAll": true
+        },
+        {
+            "name": "Full Stack: Backend + Celery Worker",
+            "configurations": ["FastAPI: Backend", "Celery: Worker (Document Queue)"],
             "preLaunchTask": "docker-compose-up",
             "stopAll": true
         }
