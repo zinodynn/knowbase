@@ -76,8 +76,11 @@ celery_app.conf.update(
     # 任务重试配置
     task_acks_late=True,  # 任务完成后才确认
     task_reject_on_worker_lost=True,  # worker 丢失时重新入队
-    # 结果配置
-    result_expires=86400,  # 结果过期时间（秒）
+    # 结果配置 - 文档处理结果已落库，不需要长期保存
+    result_expires=3600,  # 结果仅保留 1 小时
+    result_backend_transport_options={"retry_policy": {"timeout": 5.0}},  # 结果存储超时
+    # 对于不需要结果的任务，可以在任务装饰器中设置 ignore_result=True
+    task_ignore_result=False,  # 默认保留结果，方便调试
     # Worker 配置
     worker_prefetch_multiplier=1,  # 每次预取的任务数
     worker_concurrency=4,  # 并发 worker 数

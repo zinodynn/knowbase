@@ -54,8 +54,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
-      timeout: 20s
+      timeout: 10s
       retries: 3
+      start_period: 10s
     networks:
       - knowbase-network
 
@@ -70,11 +71,15 @@ services:
       - "6334:6334"
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__API_KEY: 'qdrant123456'
+    # Qdrant 容器内没有 curl/wget，使用 /readyz 端点通过 grpc_health_probe 或禁用
+    # 或者使用 timeout 命令检查端口
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - knowbase-network
 
