@@ -53,7 +53,7 @@ class RetrieverFactory:
         """创建关键词检索器
 
         Args:
-            backend: 后端类型 ("postgresql")
+            backend: 后端类型 ("postgresql", "elasticsearch")
             **kwargs: 后端特定参数
 
         Returns:
@@ -66,6 +66,26 @@ class RetrieverFactory:
                     "db_session_factory is required for PostgreSQL backend"
                 )
             return PostgresKeywordSearch(db_session_factory=db_session_factory)
+
+        elif backend == "elasticsearch":
+            from .elasticsearch_search import (
+                ElasticsearchKeywordSearch,
+                get_elasticsearch_service,
+            )
+
+            es_url = kwargs.get("es_url")
+            if not es_url:
+                raise ValueError("es_url is required for Elasticsearch backend")
+
+            es_service = get_elasticsearch_service(
+                es_url=es_url,
+                index_prefix=kwargs.get("index_prefix", "knowbase"),
+                username=kwargs.get("username"),
+                password=kwargs.get("password"),
+                use_chinese_analyzer=kwargs.get("use_chinese_analyzer", False),
+            )
+            return ElasticsearchKeywordSearch(es_service)
+
         else:
             raise ValueError(f"Unknown keyword backend: {backend}")
 

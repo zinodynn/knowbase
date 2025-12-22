@@ -252,6 +252,75 @@ def delete_document_vectors_task(self, document_id: str):
 
 @celery_app.task(
     bind=True,
+    name="app.tasks.document.reprocess_document",
+    max_retries=3,
+    default_retry_delay=60,
+)
+def reprocess_document_task(self, document_id: str):
+    """重新处理单个文档（先删除旧向量再重新处理）
+
+    Args:
+        document_id: 文档 ID
+
+    Returns:
+        处理结果
+    """
+    logger.info(f"Starting document reprocessing task: {document_id}")
+
+    async def _reprocess():
+        from app.core.database import async_session_maker
+        from app.services.document_processor import DocumentProcessor
+
+        async with async_session_maker() as db:
+            processor = DocumentProcessor(db)
+            # force=True 会先删除旧向量再重新处理
+            result = await processor.process_document(UUID(document_id), force=True)
+            return result
+
+    try:
+        result = run_async(_reprocess())
+
+        if result.success:
+            logger.info(
+                f"Document reprocessed successfully: {document_id}, "
+                f"chunks: {result.chunk_count}, time: {result.processing_time_ms}ms"
+            )
+            return {
+                "status": "success",
+                "document_id": document_id,
+                "chunk_count": result.chunk_count,
+                "vector_count": result.vector_count,
+                "processing_time_ms": result.processing_time_ms,
+            }
+        else:
+            logger.error(
+                f"Document reprocessing failed: {document_id}, error: {result.error_message}"
+            )
+
+            if self.request.retries < self.max_retries:
+                raise self.retry(exc=Exception(result.error_message))
+
+            return {
+                "status": "failed",
+                "document_id": document_id,
+                "error": result.error_message,
+            }
+
+    except Exception as e:
+        logger.error(f"Document reprocessing task error: {document_id}, error: {e}")
+
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e)
+
+        return {
+            "status": "error",
+            "document_id": document_id,
+            "error": str(e),
+        }
+
+
+@celery_app.task(
+    bind=True,
     name="app.tasks.document.process_pending_documents",
 )
 def process_pending_documents_task(self, kb_id: Optional[str] = None, limit: int = 50):

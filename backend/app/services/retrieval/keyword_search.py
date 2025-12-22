@@ -253,11 +253,30 @@ def get_keyword_search_service(db_session_factory) -> KeywordSearch:
     """
     获取关键词检索服务
 
+    根据配置返回对应的检索服务实例
+
     Args:
         db_session_factory: 数据库会话工厂
 
     Returns:
         关键词检索服务实例
     """
-    # 目前只支持 PostgreSQL
+    from app.core.config import settings
+
+    if settings.FULLTEXT_ENGINE == "elasticsearch":
+        from app.services.retrieval.elasticsearch_search import (
+            ElasticsearchKeywordSearch,
+            get_elasticsearch_service,
+        )
+
+        es_service = get_elasticsearch_service(
+            es_url=settings.ELASTICSEARCH_URL,
+            index_prefix=settings.ELASTICSEARCH_INDEX_PREFIX,
+            username=settings.ELASTICSEARCH_USERNAME,
+            password=settings.ELASTICSEARCH_PASSWORD,
+            use_chinese_analyzer=settings.ELASTICSEARCH_USE_CHINESE,
+        )
+        return ElasticsearchKeywordSearch(es_service)
+
+    # 默认使用 PostgreSQL
     return PostgresKeywordSearch(db_session_factory)

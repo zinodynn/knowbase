@@ -50,5 +50,6 @@ PyYAML==6.0.1
 # sentence-transformers==2.2.2  # 取消注释以使用本地 rerank 模型
 # tiktoken==0.5.2  # 取消注释以使用 OpenAI tokenizer
 
-# Elasticsearch（可选）
-# elasticsearch==8.11.1  # 取消注释以使用 Elasticsearch
+# Elasticsearch（可选，用于大规模全文检索）
+# 启用方法: 取消下方注释，然后运行 pip install -r requirements.txt
+# elasticsearch[async]==8.11.1  # 取消注释以使用 Elasticsearch

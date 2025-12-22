@@ -1,0 +1,35 @@
+# Elasticsearch 可选组件
+# 使用方法: docker-compose -f docker-compose.yml -f docker-compose.elasticsearch.yml up -d
+# 或者单独启动: docker-compose -f docker-compose.elasticsearch.yml up -d
+
+version: '3.8'
+
+services:
+  # Elasticsearch 全文检索
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: knowbase-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - knowbase-network
+
+volumes:
+  elasticsearch_data:
+
+networks:
+  knowbase-network:
+    external: true
+    name: knowbase_knowbase-network

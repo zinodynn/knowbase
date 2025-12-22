@@ -55,6 +55,23 @@ docker-compose up -d
 docker-compose ps
 ```
 
+### 2.1 (可选) 启用 Elasticsearch 全文检索
+
+默认使用 PostgreSQL tsvector 进行全文检索，适合中小规模数据。
+如需大规模高性能全文检索，可启用 Elasticsearch：
+
+```bash
+# 启动 Elasticsearch（需要先启动主服务）
+docker-compose -f docker-compose.elasticsearch.yml up -d
+
+# 安装 Python 依赖
+pip install "elasticsearch[async]==8.11.1"
+
+# 配置环境变量（在 .env 中设置）
+# FULLTEXT_ENGINE=elasticsearch
+# ELASTICSEARCH_URL=http://localhost:9200
+```
+
 ### 3. 配置后端
 
 > 如果你在 `pip install -r requirements.txt` 时看到类似 “dependency conflicts / resolver does not currently take into account all the packages that are installed” 的提示，通常是因为你在一个已经装了很多其它包（例如 Spyder、pyppeteer、旧版 aiohttp/pyOpenSSL 等）的 Python 环境里安装。

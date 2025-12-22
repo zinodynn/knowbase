@@ -45,41 +45,12 @@ class QdrantVectorStore(BaseVectorStore):
                     timeout=self.config.timeout,
                 )
             else:
-                # 对于本地开发环境，使用 HTTP 而非 HTTPS
-                if self.config.host in ("localhost", "127.0.0.1"):
-                    # 本地连接，使用 HTTP 并禁用代理
-                    import os
-
-                    # 临时禁用代理
-                    old_proxy = os.environ.get("HTTP_PROXY")
-                    old_https_proxy = os.environ.get("HTTPS_PROXY")
-                    os.environ.pop("HTTP_PROXY", None)
-                    os.environ.pop("HTTPS_PROXY", None)
-
-                    try:
-                        # 使用 URL 格式，更简单
-                        url = f"http://{self.config.host}:{self.config.port}"
-                        self._client = QdrantClient(
-                            url=url,
-                            api_key=(
-                                self.config.api_key if self.config.api_key else None
-                            ),
-                            timeout=self.config.timeout,
-                        )
-                    finally:
-                        # 恢复代理设置
-                        if old_proxy:
-                            os.environ["HTTP_PROXY"] = old_proxy
-                        if old_https_proxy:
-                            os.environ["HTTPS_PROXY"] = old_https_proxy
-                else:
-                    # 远程连接，使用 HTTPS
-                    self._client = QdrantClient(
-                        host=self.config.host,
-                        port=self.config.port,
-                        api_key=self.config.api_key,
-                        timeout=self.config.timeout,
-                    )
+                self._client = QdrantClient(
+                    host=self.config.host,
+                    port=self.config.port,
+                    api_key=self.config.api_key,
+                    timeout=self.config.timeout,
+                )
 
         return self._client
 
@@ -166,25 +137,12 @@ class QdrantVectorStore(BaseVectorStore):
             是否存在
         """
         try:
-            import time
-
-            # 添加简单的重试机制
-            for attempt in range(3):
-                try:
-                    collections = self.client.get_collections().collections
-                    return any(c.name == collection_name for c in collections)
-                except Exception as retry_e:
-                    if attempt < 2:  # 前两次失败时重试
-                        logger.warning(
-                            f"Retry {attempt + 1}/3 checking collection existence: {retry_e}"
-                        )
-                        time.sleep(1)  # 等待1秒后重试
-                    else:
-                        raise retry_e
+            collections = self.client.get_collections().collections
+            return any(c.name == collection_name for c in collections)
 
         except Exception as e:
-            logger.error(f"Failed to check collection existence after retries: {e}")
-            raise  # 抛出异常而不是返回 False
+            logger.error(f"Failed to check collection existence: {e}")
+            return False
 
     async def insert_vectors(
         self,

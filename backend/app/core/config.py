@@ -33,7 +33,14 @@ class Settings(BaseSettings):
 
     # Optional extra env vars (commonly present in .env templates)
     ENVIRONMENT: str = "development"
-    FULLTEXT_ENGINE: str = "postgres"
+    FULLTEXT_ENGINE: str = "postgres"  # postgres | elasticsearch
+
+    # Elasticsearch 配置（当 FULLTEXT_ENGINE=elasticsearch 时生效）
+    ELASTICSEARCH_URL: str = "http://localhost:9200"
+    ELASTICSEARCH_INDEX_PREFIX: str = "knowbase"
+    ELASTICSEARCH_USERNAME: Optional[str] = None
+    ELASTICSEARCH_PASSWORD: Optional[str] = None
+    ELASTICSEARCH_USE_CHINESE: bool = False  # 是否使用中文分词器（需要 IK 插件）
 
     # 数据库配置
     DB_USER: str = "knowbase"
