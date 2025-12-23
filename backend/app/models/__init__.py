@@ -6,11 +6,7 @@
 from app.models.api_key import ApiKey
 from app.models.document import Chunk, Document, DocumentSourceType, DocumentStatus
 from app.models.knowledge_base import KBTag, KBVisibility, KnowledgeBase
-from app.models.model_config import ConfigType, ModelConfig
-from app.models.permission import PermissionLevel, UserKBPermission
-from app.models.processing import ModelCallLog, ProcessingTask
-from app.models.user import User
-from app.models.vcs import KBProcessingConfig, KBVersion, VCSConfig
+
 # Phase 4: 迁移与批量操作
 from app.models.migration import (
     BatchOperation,
@@ -23,6 +19,11 @@ from app.models.migration import (
     RollbackCheckpoint,
     VectorMigration,
 )
+from app.models.model_config import ConfigType, ModelConfig
+from app.models.permission import PermissionLevel, UserKBPermission
+from app.models.processing import ModelCallLog, ProcessingTask
+from app.models.user import User
+from app.models.vcs import KBProcessingConfig, KBVersion, VCSConfig
 
 __all__ = [
     # 用户

@@ -42,24 +42,7 @@ from app.schemas.knowledge_base import (
     KnowledgeBaseStats,
     KnowledgeBaseUpdate,
 )
-from app.schemas.model_config import (
-    ModelConfigBase,
-    ModelConfigCreate,
-    ModelConfigListResponse,
-    ModelConfigResponse,
-    ModelConfigTestRequest,
-    ModelConfigTestResponse,
-    ModelConfigUpdate,
-)
-from app.schemas.permission import (
-    KBPermissionListResponse,
-    PermissionBase,
-    PermissionCreate,
-    PermissionResponse,
-    PermissionUpdate,
-    PermissionWithUserResponse,
-)
-from app.schemas.user import UserBase, UserCreate, UserInDB, UserResponse, UserUpdate
+
 # Phase 4: 迁移与批量操作
 from app.schemas.migration import (
     BatchDeleteRequest,
@@ -85,6 +68,24 @@ from app.schemas.migration import (
     VectorMigrationList,
     VectorMigrationResponse,
 )
+from app.schemas.model_config import (
+    ModelConfigBase,
+    ModelConfigCreate,
+    ModelConfigListResponse,
+    ModelConfigResponse,
+    ModelConfigTestRequest,
+    ModelConfigTestResponse,
+    ModelConfigUpdate,
+)
+from app.schemas.permission import (
+    KBPermissionListResponse,
+    PermissionBase,
+    PermissionCreate,
+    PermissionResponse,
+    PermissionUpdate,
+    PermissionWithUserResponse,
+)
+from app.schemas.user import UserBase, UserCreate, UserInDB, UserResponse, UserUpdate
 
 __all__ = [
     # User
