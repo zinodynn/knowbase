@@ -11,6 +11,18 @@ from app.models.permission import PermissionLevel, UserKBPermission
 from app.models.processing import ModelCallLog, ProcessingTask
 from app.models.user import User
 from app.models.vcs import KBProcessingConfig, KBVersion, VCSConfig
+# Phase 4: 迁移与批量操作
+from app.models.migration import (
+    BatchOperation,
+    BatchOperationStatus,
+    BatchOperationType,
+    MigrationLog,
+    MigrationStatus,
+    ReembeddingStrategy,
+    ReembeddingTask,
+    RollbackCheckpoint,
+    VectorMigration,
+)
 
 __all__ = [
     # 用户
@@ -39,4 +51,14 @@ __all__ = [
     "VCSConfig",
     "KBVersion",
     "KBProcessingConfig",
+    # Phase 4: 迁移与批量操作
+    "VectorMigration",
+    "MigrationLog",
+    "MigrationStatus",
+    "ReembeddingTask",
+    "ReembeddingStrategy",
+    "BatchOperation",
+    "BatchOperationType",
+    "BatchOperationStatus",
+    "RollbackCheckpoint",
 ]

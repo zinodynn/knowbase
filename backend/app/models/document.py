@@ -140,6 +140,10 @@ class Chunk(Base):
     vector_id: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, index=True
     )
+    # Phase 4: 追踪使用的 embedding 模型版本
+    embedding_model_version: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, comment="使用的 embedding 模型版本标识"
+    )
     doc_metadata: Mapped[Optional[dict]] = mapped_column(
         "metadata", JSON, nullable=True
     )

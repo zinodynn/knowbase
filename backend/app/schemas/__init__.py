@@ -60,6 +60,31 @@ from app.schemas.permission import (
     PermissionWithUserResponse,
 )
 from app.schemas.user import UserBase, UserCreate, UserInDB, UserResponse, UserUpdate
+# Phase 4: 迁移与批量操作
+from app.schemas.migration import (
+    BatchDeleteRequest,
+    BatchOperationList,
+    BatchOperationResponse,
+    BatchOperationStatusEnum,
+    BatchOperationTypeEnum,
+    BatchReprocessRequest,
+    BatchTagsRequest,
+    BatchUpdateMetadataRequest,
+    MigrationLogList,
+    MigrationLogResponse,
+    MigrationStatusEnum,
+    ModelChangeCheck,
+    ModelConfigInfo,
+    ReembeddingStrategyEnum,
+    ReembeddingTaskCreate,
+    ReembeddingTaskList,
+    ReembeddingTaskResponse,
+    RollbackCheckpointResponse,
+    RollbackRequest,
+    VectorMigrationCreate,
+    VectorMigrationList,
+    VectorMigrationResponse,
+)
 
 __all__ = [
     # User
@@ -119,4 +144,27 @@ __all__ = [
     "SearchRequest",
     "SearchHit",
     "SearchResponse",
+    # Phase 4: Migration & Batch Operations
+    "MigrationStatusEnum",
+    "ReembeddingStrategyEnum",
+    "BatchOperationTypeEnum",
+    "BatchOperationStatusEnum",
+    "VectorMigrationCreate",
+    "VectorMigrationResponse",
+    "VectorMigrationList",
+    "MigrationLogResponse",
+    "MigrationLogList",
+    "ModelConfigInfo",
+    "ReembeddingTaskCreate",
+    "ReembeddingTaskResponse",
+    "ReembeddingTaskList",
+    "ModelChangeCheck",
+    "BatchDeleteRequest",
+    "BatchReprocessRequest",
+    "BatchUpdateMetadataRequest",
+    "BatchTagsRequest",
+    "BatchOperationResponse",
+    "BatchOperationList",
+    "RollbackCheckpointResponse",
+    "RollbackRequest",
 ]
