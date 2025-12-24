@@ -25,12 +25,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (username: string, password: string) => {
     const response = await authApi.login(username, password);
-    const { access_token, refresh_token } = response.data;
-    localStorage.setItem('access_token', access_token);
-    localStorage.setItem('refresh_token', refresh_token);
     
-    const userResponse = await authApi.me();
-    set({ user: userResponse.data, isAuthenticated: true });
+    // 正确获取 token（axios response.data 就是响应体）
+    const tokenData = response.data;
+    console.log('Login response:', tokenData); // 调试日志
+    
+    if (tokenData.access_token) {
+      localStorage.setItem('access_token', tokenData.access_token);
+      if (tokenData.refresh_token) {
+        localStorage.setItem('refresh_token', tokenData.refresh_token);
+      }
+      
+      // 获取用户信息
+      const userResponse = await authApi.me();
+      set({ user: userResponse.data, isAuthenticated: true, isLoading: false });
+    } else {
+      throw new Error('登录响应中没有 access_token');
+    }
   },
 
   logout: () => {
