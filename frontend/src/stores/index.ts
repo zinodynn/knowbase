@@ -25,10 +25,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (username: string, password: string) => {
     const response = await authApi.login(username, password);
-    
-    // 正确获取 token（axios response.data 就是响应体）
     const tokenData = response.data;
-    console.log('Login response:', tokenData); // 调试日志
     
     if (tokenData.access_token) {
       localStorage.setItem('access_token', tokenData.access_token);
