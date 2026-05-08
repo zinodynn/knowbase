@@ -12,6 +12,7 @@ from app.api.v1 import (
     permissions,
     search,
     users,
+    versions,
 )
 from fastapi import APIRouter
 
@@ -44,6 +45,9 @@ api_router.include_router(documents.router, prefix="", tags=["文档管理"])
 
 # 搜索路由
 api_router.include_router(search.router, prefix="", tags=["搜索"])
+
+# 版本管理路由
+api_router.include_router(versions.router, prefix="", tags=["版本管理"])
 
 # 管理员路由
 api_router.include_router(admin.router, prefix="", tags=["管理员"])
