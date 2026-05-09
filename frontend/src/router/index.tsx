@@ -5,6 +5,7 @@ import KnowledgeBasesPage from '../pages/KnowledgeBases';
 import DocumentsPage from '../pages/Documents';
 import SearchPage from '../pages/Search';
 import ModelConfigsPage from '../pages/ModelConfigs';
+import VersionsPage from '../pages/Versions';
 
 const router = createBrowserRouter([
   {
@@ -34,6 +35,10 @@ const router = createBrowserRouter([
       {
         path: 'model-configs',
         element: <ModelConfigsPage />,
+      },
+      {
+        path: 'knowledge-bases/:kbId/versions',
+        element: <VersionsPage />,
       },
       {
         path: 'settings',

@@ -24,6 +24,7 @@ from app.models.permission import PermissionLevel, UserKBPermission
 from app.models.processing import ModelCallLog, ProcessingTask
 from app.models.user import User
 from app.models.vcs import KBProcessingConfig, KBVersion, VCSConfig
+from app.models.version_snapshot import VersionSnapshot
 
 __all__ = [
     # 用户
@@ -52,6 +53,7 @@ __all__ = [
     "VCSConfig",
     "KBVersion",
     "KBProcessingConfig",
+    "VersionSnapshot",
     # Phase 4: 迁移与批量操作
     "VectorMigration",
     "MigrationLog",
