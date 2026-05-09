@@ -130,6 +130,30 @@ async def list_versions(
 
 
 @router.get(
+    "/versions/compare",
+    response_model=VersionCompareResponse,
+    summary="版本对比",
+)
+async def compare_versions(
+    v1: uuid.UUID = Query(..., description="版本1 ID"),
+    v2: uuid.UUID = Query(..., description="版本2 ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    对比两个版本的差异
+
+    返回新增文档、删除文档、修改文档列表。
+    """
+    manager = VersionManager(db)
+    try:
+        result = await manager.compare_versions(v1, v2)
+        return VersionCompareResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get(
     "/versions/{version_id}",
     response_model=VersionDetailResponse,
     summary="获取版本详情",
@@ -210,26 +234,3 @@ async def delete_version(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-
-@router.get(
-    "/versions/compare",
-    response_model=VersionCompareResponse,
-    summary="版本对比",
-)
-async def compare_versions(
-    v1: uuid.UUID = Query(..., description="版本1 ID"),
-    v2: uuid.UUID = Query(..., description="版本2 ID"),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    对比两个版本的差异
-
-    返回新增文档、删除文档、修改文档列表。
-    """
-    manager = VersionManager(db)
-    try:
-        result = await manager.compare_versions(v1, v2)
-        return VersionCompareResponse(**result)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
