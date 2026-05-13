@@ -207,16 +207,17 @@ def reprocess_failed_documents_task(self, kb_id: Optional[str] = None):
     bind=True,
     name="app.tasks.document.delete_document_vectors",
 )
-def delete_document_vectors_task(self, document_id: str):
+def delete_document_vectors_task(self, document_id: str, kb_id: str = None):
     """删除文档的向量
 
     Args:
         document_id: 文档 ID
+        kb_id: 知识库 ID（可选，用于日志记录）
 
     Returns:
         删除结果
     """
-    logger.info(f"Deleting vectors for document: {document_id}")
+    logger.info(f"Deleting vectors for document: {document_id}, kb: {kb_id}")
 
     async def _delete():
         from app.core.database import async_session_maker

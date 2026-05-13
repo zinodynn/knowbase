@@ -96,6 +96,18 @@ async def create_user(
     return user
 
 
+
+
+@router.get("/me", response_model=UserResponse, summary="获取当前用户信息")
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    获取当前登录用户的信息
+    """
+    return current_user
+
+
 @router.get("/{user_id}", response_model=UserResponse, summary="获取指定用户")
 async def get_user(
     user_id: uuid.UUID,

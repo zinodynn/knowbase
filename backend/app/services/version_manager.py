@@ -68,7 +68,7 @@ class VersionManager:
             select(Document).where(
                 and_(
                     Document.kb_id == kb_id,
-                    Document.status == DocumentStatus.COMPLETED,
+                    Document.status != DocumentStatus.FAILED,
                 )
             )
         )
