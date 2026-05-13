@@ -8,7 +8,7 @@ from typing import Optional
 
 from app.core.database import Base
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import relationship
 
 
@@ -95,6 +95,11 @@ class KBVersion(Base):
     document_count = Column(Integer, default=0)
     chunk_count = Column(Integer, default=0)
 
+    # 快照数据
+    snapshot_data = Column(JSON, nullable=True, comment="快照数据：存储该版本下所有文档和分块的元信息")
+    is_active = Column(Boolean, default=False, comment="是否为当前激活版本")
+    tags = Column(String(200), nullable=True, comment="版本标签，如 v1.0, stable")
+
     # 创建信息
     created_by = Column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -106,6 +111,7 @@ class KBVersion(Base):
     # 关系
     knowledge_base = relationship("KnowledgeBase", back_populates="versions")
     creator = relationship("User")
+    snapshots = relationship("VersionSnapshot", back_populates="kb_version", lazy="selectin", cascade="all, delete-orphan")
 
 
 class KBProcessingConfig(Base):

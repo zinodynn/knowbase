@@ -320,11 +320,14 @@ async def search(
     embedding_service = EmbeddingFactory.create(config=settings_embedding_config)
 
     # 创建向量存储
-    vector_store = QdrantVectorStore(
-        host=settings.QDRANT_HOST,
-        port=settings.QDRANT_PORT,
+    from app.services.vector_store.base import VectorStoreConfig
+
+    vector_store_config = VectorStoreConfig(
+        host=settings.QDRANT_HOST or "localhost",
+        port=settings.QDRANT_PORT or 6333,
         api_key=settings.QDRANT_API_KEY,
     )
+    vector_store = QdrantVectorStore(config=vector_store_config)
 
     # 创建检索管道
     rerank_provider = None
