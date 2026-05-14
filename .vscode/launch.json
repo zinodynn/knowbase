@@ -155,12 +155,6 @@
             "configurations": ["FastAPI: Backend"],
             "preLaunchTask": "docker-compose-up",
             "stopAll": true
-        },
-        {
-            "name": "Full Stack: Backend + Celery Worker",
-            "configurations": ["FastAPI: Backend", "Celery: Worker (Document Queue)"],
-            "preLaunchTask": "docker-compose-up",
-            "stopAll": true
         }
     ]
 }
