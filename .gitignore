@@ -24,3 +24,6 @@ docker-compose.override.yml
 # 日志
 *.log
 logs/
+
+# 规则文件
+.rules
