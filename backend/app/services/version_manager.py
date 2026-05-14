@@ -250,14 +250,16 @@ class VersionManager:
 
     async def switch_version(self, version_id: uuid.UUID) -> KBVersion:
         """
-        切换到指定版本
+        切换到指定版本（非破坏性）
 
+        仅切换 is_active 标记并更新知识库统计信息，
+        不删除任何文档、分块或向量数据，保证切换安全可逆。
+
+        Steps:
         1. 验证目标版本存在
-        2. 获取目标版本的快照数据
-        3. 将当前知识库的文档状态恢复到快照记录的状态
-        4. 更新向量数据库中的分块数据
-        5. 将旧激活版本设为非激活，目标版本设为激活
-        6. 清除相关缓存
+        2. 将所有当前激活版本设为 is_active=False
+        3. 将目标版本设为 is_active=True
+        4. 更新知识库统计信息（version, document_count, chunk_count）
 
         Args:
             version_id: 目标版本 ID
@@ -272,77 +274,7 @@ class VersionManager:
 
         kb_id = target_version.kb_id
 
-        # 2. 获取目标版本的快照
-        snapshots_result = await self.db.execute(
-            select(VersionSnapshot).where(VersionSnapshot.version_id == version_id)
-        )
-        snapshots = snapshots_result.scalars().all()
-
-        # 3. 构建目标版本的文档状态映射
-        target_doc_ids = set()
-        target_chunk_ids = set()
-        doc_snapshot_map: Dict[uuid.UUID, Dict[str, Any]] = {}
-
-        for snapshot in snapshots:
-            if snapshot.document_id:
-                target_doc_ids.add(snapshot.document_id)
-                doc_snapshot_map[snapshot.document_id] = snapshot.document_snapshot
-            if snapshot.chunk_ids:
-                for cid in snapshot.chunk_ids:
-                    try:
-                        target_chunk_ids.add(uuid.UUID(cid))
-                    except (ValueError, AttributeError):
-                        pass
-
-        # 4. 获取当前知识库所有文档和分块
-        current_docs_result = await self.db.execute(
-            select(Document).where(Document.kb_id == kb_id)
-        )
-        current_docs = current_docs_result.scalars().all()
-        current_doc_ids = {doc.id for doc in current_docs}
-
-        current_chunks_result = await self.db.execute(
-            select(Chunk).where(Chunk.kb_id == kb_id)
-        )
-        current_chunks = current_chunks_result.scalars().all()
-        current_chunk_ids = {chunk.id for chunk in current_chunks}
-
-        # 5. 计算差异
-        docs_to_delete = current_doc_ids - target_doc_ids
-        docs_to_add = target_doc_ids - current_doc_ids
-        chunks_to_delete = current_chunk_ids - target_chunk_ids
-
-        # 6. 从向量数据库删除多余的分块向量
-        chunks_to_delete_vectors = [
-            chunk for chunk in current_chunks if chunk.id in chunks_to_delete
-        ]
-        if chunks_to_delete_vectors:
-            await self._delete_vectors_from_store(
-                kb_id, [c.vector_id for c in chunks_to_delete_vectors if c.vector_id]
-            )
-
-        # 7. 删除多余的 chunks
-        if chunks_to_delete:
-            await self.db.execute(
-                update(Chunk)
-                .where(Chunk.id.in_(chunks_to_delete))
-                .values(kb_id=None)  # 软删除，取消关联
-            )
-            # 硬删除多余的分块
-            for chunk in current_chunks:
-                if chunk.id in chunks_to_delete:
-                    await self.db.delete(chunk)
-
-        # 8. 删除多余的文档
-        for doc in current_docs:
-            if doc.id in docs_to_delete:
-                await self.db.delete(doc)
-
-        # 9. 恢复目标版本的文档和分块状态
-        # (由于分块和文档是物理存储的，切换版本主要是更新引用关系)
-        # 实际的文档内容恢复需要从存储系统重新获取，这里标记快照状态
-
-        # 10. 更新 KBVersion 的激活状态
+        # 2. 将所有当前激活版本设为非激活
         await self.db.execute(
             update(KBVersion)
             .where(
@@ -354,9 +286,11 @@ class VersionManager:
             )
             .values(is_active=False)
         )
+
+        # 3. 将目标版本设为激活
         target_version.is_active = True
 
-        # 11. 更新知识库的统计信息
+        # 4. 更新知识库统计信息
         kb = await self.db.get(KnowledgeBase, kb_id)
         if kb:
             kb.version = target_version.version
@@ -365,11 +299,10 @@ class VersionManager:
 
         await self.db.flush()
         logger.info(
-            f"版本切换成功: kb_id={kb_id}, "
-            f"from_version={kb.version if kb else '?'}, "
+            f"版本切换成功（非破坏性）: kb_id={kb_id}, "
             f"to_version={target_version.version}, "
-            f"deleted_docs={len(docs_to_delete)}, "
-            f"deleted_chunks={len(chunks_to_delete)}"
+            f"document_count={target_version.document_count}, "
+            f"chunk_count={target_version.chunk_count}"
         )
 
         return target_version
