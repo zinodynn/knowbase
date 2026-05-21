@@ -18,7 +18,7 @@ from app.schemas.model_config import (
     ModelConfigTestResponse,
     ModelConfigUpdate,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,12 +99,16 @@ async def create_model_config(
     # 创建配置
     config = ModelConfig(
         name=config_in.name,
+        description=config_in.description,
+        config_type=config_in.config_type,
         model_type=config_in.model_type,
         provider=config_in.provider,
         model_name=config_in.model_name,
         api_base=config_in.api_base,
         api_key_encrypted=encrypted_api_key,
         extra_params=config_in.extra_params,
+        timeout_seconds=config_in.timeout_seconds,
+        max_retries=config_in.max_retries,
         is_default=config_in.is_default,
         is_active=True,
     )
@@ -217,7 +221,7 @@ async def delete_model_config(
 )
 async def test_model_config(
     config_id: uuid.UUID,
-    test_in: ModelConfigTestRequest,
+    test_in: ModelConfigTestRequest = Body(None),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> Any:
@@ -227,6 +231,10 @@ async def test_model_config(
     注意：此接口会实际调用模型 API，可能产生费用
     """
     import time
+
+    # 如果客户端未提供请求体，使用默认的测试输入
+    if test_in is None:
+        test_in = ModelConfigTestRequest()
 
     result = await db.execute(select(ModelConfig).where(ModelConfig.id == config_id))
     config = result.scalar_one_or_none()
@@ -241,25 +249,82 @@ async def test_model_config(
     if config.api_key_encrypted:
         api_key = encryption_service.decrypt(config.api_key_encrypted)
 
-    # TODO: 实现实际的模型调用测试
-    # 这里只是一个占位实现
+    if not api_key:
+        return ModelConfigTestResponse(
+            success=False,
+            message="未配置 API Key，无法发起测试",
+        )
+
     start_time = time.time()
 
     try:
-        # 根据不同的模型类型和提供商进行测试
-        # 这部分需要在后续实现具体的模型调用逻辑
-
-        latency_ms = (time.time() - start_time) * 1000
-
-        return ModelConfigTestResponse(
-            success=True,
-            message="配置验证成功",
-            latency_ms=latency_ms,
-            output=f"测试配置: {config.name} ({config.provider}/{config.model_name})",
+        model_type = (
+            config.model_type.value
+            if hasattr(config.model_type, "value")
+            else str(config.model_type)
         )
 
+        if model_type == "embedding":
+            from app.services.embeddings.factory import EmbeddingFactory
+
+            svc = EmbeddingFactory.from_model_config(
+                {
+                    "provider": config.provider,
+                    "api_key": api_key,
+                    "api_base": config.api_base,
+                    "model_name": config.model_name,
+                    "timeout": config.timeout_seconds,
+                    "max_retries": config.max_retries,
+                }
+            )
+            embed_result = await svc.embed_texts([test_in.test_input])
+            latency_ms = (time.time() - start_time) * 1000
+
+            dim = len(embed_result.vectors[0]) if embed_result.vectors else 0
+            return ModelConfigTestResponse(
+                success=True,
+                message=f"Embedding 测试成功，向量维度: {dim}",
+                latency_ms=latency_ms,
+                output={
+                    "model": embed_result.model,
+                    "dimension": dim,
+                    "usage": embed_result.usage,
+                },
+            )
+
+        else:
+            # rerank / LLM：做一次简单 HTTP 连通性检查
+            import httpx
+
+            base = (config.api_base or "https://api.openai.com/v1").rstrip("/")
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{base}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+            latency_ms = (time.time() - start_time) * 1000
+
+            if resp.status_code < 400:
+                return ModelConfigTestResponse(
+                    success=True,
+                    message=f"API 连通性测试成功 (HTTP {resp.status_code})",
+                    latency_ms=latency_ms,
+                    output={"status_code": resp.status_code},
+                )
+            else:
+                return ModelConfigTestResponse(
+                    success=False,
+                    message=f"API 返回错误 (HTTP {resp.status_code}): {resp.text[:200]}",
+                    latency_ms=latency_ms,
+                )
+
     except Exception as e:
-        return ModelConfigTestResponse(success=False, message=f"配置验证失败: {str(e)}")
+        latency_ms = (time.time() - start_time) * 1000
+        return ModelConfigTestResponse(
+            success=False,
+            message=f"测试失败: {str(e)}",
+            latency_ms=latency_ms,
+        )
 
 
 @router.post(

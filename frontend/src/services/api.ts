@@ -101,6 +101,19 @@ export const modelApi = {
   test: (id: string) => api.post(`/model-configs/${id}/test`),
 };
 
+// Version APIs
+export const versionApi = {
+  list: (kbId: string, page = 1, pageSize = 20) =>
+    api.get(`/knowledge-bases/${kbId}/versions`, { params: { page, page_size: pageSize } }),
+  get: (versionId: string) => api.get(`/versions/${versionId}`),
+  create: (kbId: string, data: { description: string; tags?: string }) =>
+    api.post(`/knowledge-bases/${kbId}/versions`, data),
+  switch: (versionId: string) => api.post(`/versions/${versionId}/switch`),
+  delete: (versionId: string) => api.delete(`/versions/${versionId}`),
+  compare: (v1: string, v2: string) =>
+    api.get('/versions/compare', { params: { v1, v2 } }),
+};
+
 // Admin APIs
 export const adminApi = {
   users: (page = 1, pageSize = 20) =>

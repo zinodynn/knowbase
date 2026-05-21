@@ -22,6 +22,7 @@ from app.services.embeddings import (
 )
 from app.services.parsers import BaseParser, ParsedDocument, ParserFactory, get_parser
 from app.services.storage import StorageService, get_storage_service
+from app.services.version_manager import VersionManager
 from app.services.vector_store import (
     BaseVectorStore,
     QdrantVectorStore,
@@ -59,4 +60,6 @@ __all__ = [
     "DocumentProcessor",
     # "ProcessingConfig",
     "ProcessingResult",
+    # Version Manager
+    "VersionManager",
 ]

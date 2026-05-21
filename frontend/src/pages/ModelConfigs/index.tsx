@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { 
   Card, Table, Button, Space, Modal, Form, Input, Select, 
-  message, Typography, Tag, Switch, InputNumber
+  message, Typography, Tag, Switch, InputNumber, Descriptions
 } from 'antd';
 import { 
   PlusOutlined, EditOutlined, DeleteOutlined, 
@@ -93,13 +93,52 @@ const ModelConfigsPage: React.FC = () => {
     setTesting(id);
     try {
       const response = await modelApi.test(id);
-      if (response.data.success) {
-        message.success('连接测试成功');
+      const result = response.data;
+      const latency = result.latency_ms != null ? `${result.latency_ms.toFixed(0)} ms` : '-';
+
+      if (result.success) {
+        const output = result.output;
+        Modal.success({
+          title: '模型连接测试成功',
+          width: 480,
+          content: (
+            <Descriptions column={1} size="small" style={{ marginTop: 12 }}>
+              <Descriptions.Item label="结果">{result.message}</Descriptions.Item>
+              <Descriptions.Item label="响应延迟">{latency}</Descriptions.Item>
+              {output?.dimension && (
+                <Descriptions.Item label="向量维度">{output.dimension}</Descriptions.Item>
+              )}
+              {output?.model && (
+                <Descriptions.Item label="实际模型">{output.model}</Descriptions.Item>
+              )}
+              {output?.usage?.prompt_tokens != null && (
+                <Descriptions.Item label="消耗 Token">{output.usage.prompt_tokens}</Descriptions.Item>
+              )}
+              {output?.status_code && (
+                <Descriptions.Item label="HTTP 状态">{output.status_code}</Descriptions.Item>
+              )}
+            </Descriptions>
+          ),
+        });
       } else {
-        message.error(`测试失败: ${response.data.error}`);
+        Modal.error({
+          title: '模型连接测试失败',
+          width: 480,
+          content: (
+            <Descriptions column={1} size="small" style={{ marginTop: 12 }}>
+              <Descriptions.Item label="错误信息">{result.message}</Descriptions.Item>
+              {result.latency_ms != null && (
+                <Descriptions.Item label="响应延迟">{latency}</Descriptions.Item>
+              )}
+            </Descriptions>
+          ),
+        });
       }
     } catch (error: any) {
-      message.error(error.response?.data?.detail || '测试失败');
+      Modal.error({
+        title: '测试请求失败',
+        content: error.response?.data?.detail || error.message || '网络错误，请检查后端服务是否正常',
+      });
     } finally {
       setTesting(null);
     }
@@ -280,8 +319,8 @@ const ModelConfigsPage: React.FC = () => {
             <Input placeholder="如: https://api.openai.com/v1" />
           </Form.Item>
 
-          <Form.Item name="api_key_encrypted" label="API Key">
-            <Input.Password placeholder="输入 API Key" />
+          <Form.Item name="api_key" label="API Key">
+            <Input.Password placeholder={editingConfig ? '留空则保留原密钥' : '输入 API Key'} />
           </Form.Item>
 
           <Space style={{ width: '100%' }} size="large">

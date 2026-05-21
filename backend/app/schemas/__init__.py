@@ -86,6 +86,18 @@ from app.schemas.permission import (
     PermissionWithUserResponse,
 )
 from app.schemas.user import UserBase, UserCreate, UserInDB, UserResponse, UserUpdate
+from app.schemas.version import (
+    VersionCompareDoc,
+    VersionCompareModifiedDoc,
+    VersionCompareResponse,
+    VersionCompareSummary,
+    VersionCompareVersionInfo,
+    VersionCreate,
+    VersionDetailResponse,
+    VersionListResponse,
+    VersionResponse,
+    VersionSnapshotItem,
+)
 
 __all__ = [
     # User
@@ -168,4 +180,15 @@ __all__ = [
     "BatchOperationList",
     "RollbackCheckpointResponse",
     "RollbackRequest",
+    # Version Management
+    "VersionCreate",
+    "VersionResponse",
+    "VersionListResponse",
+    "VersionDetailResponse",
+    "VersionSnapshotItem",
+    "VersionCompareResponse",
+    "VersionCompareDoc",
+    "VersionCompareModifiedDoc",
+    "VersionCompareSummary",
+    "VersionCompareVersionInfo",
 ]
