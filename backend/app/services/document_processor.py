@@ -416,3 +416,55 @@ async def process_document_async(
     """
     processor = DocumentProcessor(db)
     return await processor.process_document(document_id, force)
+
+
+async def get_active_embedding_config(db: AsyncSession) -> EmbeddingConfig:
+    """从数据库读取当前激活的默认 Embedding 模型配置。
+
+    优先级：DB 中 is_default=True & is_active=True 的 embedding 配置 > .env 设置。
+    任何异常均静默回退到 .env，保证服务不中断。
+    """
+    from app.core.encryption import EncryptionService
+    from app.models.model_config import ModelConfig, ModelType
+
+    try:
+        result = await db.execute(
+            select(ModelConfig)
+            .where(
+                ModelConfig.model_type == ModelType.EMBEDDING,
+                ModelConfig.is_default == True,  # noqa: E712
+                ModelConfig.is_active == True,  # noqa: E712
+            )
+            .limit(1)
+        )
+        cfg = result.scalar_one_or_none()
+
+        if cfg:
+            api_key: Optional[str] = settings.EMBEDDING_API_KEY
+            if cfg.api_key_encrypted:
+                api_key = EncryptionService().decrypt(cfg.api_key_encrypted)
+
+            dimension = settings.EMBEDDING_DIMENSION
+            if cfg.extra_params and isinstance(cfg.extra_params.get("dimension"), int):
+                dimension = cfg.extra_params["dimension"]
+
+            return EmbeddingConfig(
+                provider=EmbeddingProvider(cfg.provider or settings.EMBEDDING_PROVIDER),
+                api_key=api_key or settings.EMBEDDING_API_KEY,
+                api_base=cfg.api_base or settings.EMBEDDING_API_BASE,
+                model=cfg.model_name or settings.EMBEDDING_MODEL,
+                dimension=dimension,
+            )
+    except Exception as exc:
+        logger.warning(
+            "Failed to load embedding config from DB, falling back to .env: %s", exc
+        )
+
+    # 回退到 .env
+    return EmbeddingConfig(
+        provider=EmbeddingProvider(settings.EMBEDDING_PROVIDER),
+        api_key=settings.EMBEDDING_API_KEY,
+        api_base=settings.EMBEDDING_API_BASE,
+        model=settings.EMBEDDING_MODEL,
+        dimension=settings.EMBEDDING_DIMENSION,
+    )

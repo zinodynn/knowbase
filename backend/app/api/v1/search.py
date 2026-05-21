@@ -15,7 +15,6 @@ from app.core.config import settings
 from app.models.knowledge_base import KnowledgeBase
 from app.models.permission import PermissionLevel, UserKBPermission
 from app.models.user import User
-from app.services.embeddings.base import EmbeddingConfig
 from app.services.retrieval import (
     FusionStrategy,
     RerankConfig,
@@ -301,23 +300,14 @@ async def search(
             "adaptive": request.hybrid_options.adaptive,
         }
 
-    # 初始化服务（实际项目中应使用依赖注入）
-    # 这里简化处理，实际需要根据配置创建服务
+    # 从数据库加载激活的默认 Embedding 配置，回退到 .env
+    from app.services.document_processor import get_active_embedding_config
     from app.services.embeddings.factory import EmbeddingFactory
     from app.services.vector_store.qdrant_store import QdrantVectorStore
 
-    settings_embedding_config = EmbeddingConfig(
-        provider=settings.EMBEDDING_PROVIDER,
-        api_key=settings.EMBEDDING_API_KEY,
-        api_base=settings.EMBEDDING_API_BASE,
-        model=settings.EMBEDDING_MODEL,
-        dimension=settings.EMBEDDING_DIMENSION,
-        azure_endpoint=settings.AZURE_ENDPOINT,
-        azure_deployment=settings.AZURE_EMBEDDING_DEPLOYMENT,
-        azure_api_version=settings.AZURE_API_VERSION,
-    )
+    active_embedding_config = await get_active_embedding_config(db)
     # 创建 embedding 服务
-    embedding_service = EmbeddingFactory.create(config=settings_embedding_config)
+    embedding_service = EmbeddingFactory.create(config=active_embedding_config)
 
     # 创建向量存储
     from app.services.vector_store.base import VectorStoreConfig

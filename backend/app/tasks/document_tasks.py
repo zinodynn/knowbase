@@ -46,10 +46,14 @@ def process_document_task(self, document_id: str, force: bool = False):
 
     async def _process():
         from app.core.database import async_session_maker
-        from app.services.document_processor import DocumentProcessor
+        from app.services.document_processor import (
+            DocumentProcessor,
+            get_active_embedding_config,
+        )
 
         async with async_session_maker() as db:
-            processor = DocumentProcessor(db)
+            embedding_config = await get_active_embedding_config(db)
+            processor = DocumentProcessor(db, embedding_config=embedding_config)
             result = await processor.process_document(UUID(document_id), force)
             return result
 
@@ -221,10 +225,14 @@ def delete_document_vectors_task(self, document_id: str, kb_id: str = None):
 
     async def _delete():
         from app.core.database import async_session_maker
-        from app.services.document_processor import DocumentProcessor
+        from app.services.document_processor import (
+            DocumentProcessor,
+            get_active_embedding_config,
+        )
 
         async with async_session_maker() as db:
-            processor = DocumentProcessor(db)
+            embedding_config = await get_active_embedding_config(db)
+            processor = DocumentProcessor(db, embedding_config=embedding_config)
             return await processor.delete_document_vectors(UUID(document_id))
 
     try:
@@ -270,10 +278,14 @@ def reprocess_document_task(self, document_id: str):
 
     async def _reprocess():
         from app.core.database import async_session_maker
-        from app.services.document_processor import DocumentProcessor
+        from app.services.document_processor import (
+            DocumentProcessor,
+            get_active_embedding_config,
+        )
 
         async with async_session_maker() as db:
-            processor = DocumentProcessor(db)
+            embedding_config = await get_active_embedding_config(db)
+            processor = DocumentProcessor(db, embedding_config=embedding_config)
             # force=True 会先删除旧向量再重新处理
             result = await processor.process_document(UUID(document_id), force=True)
             return result
