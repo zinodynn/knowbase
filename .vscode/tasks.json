@@ -172,6 +172,30 @@
             }
         },
         {
+            "label": "frontend-dev",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "vite",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "VITE",
+                    "endsPattern": "Local:.*3000"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        },
+        {
             "label": "Full Setup: Install + Docker + Migrate + Init",
             "dependsOrder": "sequence",
             "dependsOn": [

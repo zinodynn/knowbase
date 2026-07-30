@@ -67,7 +67,7 @@ async def list_kb_permissions(
                 kb_id=perm.kb_id,
                 permission=perm.permission,
                 created_at=perm.created_at,
-                updated_at=perm.updated_at,
+                updated_at=getattr(perm, "updated_at", None) or perm.created_at,
                 username=username,
                 email=email,
             )

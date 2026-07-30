@@ -3,7 +3,7 @@ API Key 管理路由
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, List
 
 from app.api.deps import get_current_user
@@ -23,6 +23,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
+
+_UPDATE_FIELD_MAP = {
+    "name": "key_name",
+}
 
 
 @router.get("", response_model=ApiKeyListResponse, summary="获取 API Key 列表")
@@ -69,7 +73,7 @@ async def create_api_key(
     # 计算过期时间
     expires_at = None
     if key_in.expires_days:
-        expires_at = datetime.utcnow() + timedelta(days=key_in.expires_days)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=key_in.expires_days)
 
     # 创建记录
     api_key_obj = ApiKey(
@@ -92,7 +96,6 @@ async def create_api_key(
         key_name=api_key_obj.key_name,
         description=api_key_obj.description,
         key_prefix=api_key_obj.key_prefix,
-        key_hash=api_key_obj.key_hash,
         is_active=api_key_obj.is_active,
         expires_at=api_key_obj.expires_at,
         last_used_at=api_key_obj.last_used_at,
@@ -139,10 +142,10 @@ async def update_api_key(
             status_code=status.HTTP_404_NOT_FOUND, detail="API Key 不存在"
         )
 
-    # 更新字段
+    # 更新字段（schema 的 name 映射到 ORM 的 key_name）
     update_data = key_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(api_key, field, value)
+        setattr(api_key, _UPDATE_FIELD_MAP.get(field, field), value)
 
     await db.commit()
     await db.refresh(api_key)

@@ -20,7 +20,7 @@ import {
   DiffOutlined,
   HistoryOutlined,
 } from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { versionApi } from '../../services/api';
 import VersionDiff from './VersionDiff';
 
@@ -48,7 +48,6 @@ interface CompareData {
 
 const VersionsPage: React.FC = () => {
   const { kbId } = useParams<{ kbId: string }>();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<VersionItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -57,6 +56,8 @@ const VersionsPage: React.FC = () => {
   const [diffVisible, setDiffVisible] = useState(false);
   const [compareData, setCompareData] = useState<CompareData | null>(null);
   const [selectedVersions, setSelectedVersions] = useState<string[]>([]);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailData, setDetailData] = useState<Record<string, unknown> | null>(null);
   const [form] = Form.useForm();
 
   const fetchData = async () => {
@@ -120,8 +121,14 @@ const VersionsPage: React.FC = () => {
     }
   };
 
-  const handleViewDetail = (versionId: string) => {
-    navigate(`/versions/${versionId}`);
+  const handleViewDetail = async (versionId: string) => {
+    try {
+      const response = await versionApi.get(versionId);
+      setDetailData(response.data);
+      setDetailVisible(true);
+    } catch {
+      message.error('获取版本详情失败');
+    }
   };
 
   const handleCompare = async () => {
@@ -213,7 +220,7 @@ const VersionsPage: React.FC = () => {
             <>
               <Popconfirm
                 title="确认切换到该版本？"
-                description="切换版本会恢复该版本的文档和分块状态"
+                description="切换版本会按快照调整文档可见性（不删除数据）"
                 onConfirm={() => handleSwitchVersion(record.id)}
                 okText="确认切换"
                 cancelText="取消"
@@ -325,6 +332,20 @@ const VersionsPage: React.FC = () => {
         width={800}
       >
         {compareData && <VersionDiff data={compareData} />}
+      </Modal>
+
+      <Modal
+        title="版本详情"
+        open={detailVisible}
+        onCancel={() => setDetailVisible(false)}
+        footer={null}
+        width={720}
+      >
+        {detailData && (
+          <pre style={{ maxHeight: 480, overflow: 'auto', whiteSpace: 'pre-wrap' }}>
+            {JSON.stringify(detailData, null, 2)}
+          </pre>
+        )}
       </Modal>
     </div>
   );

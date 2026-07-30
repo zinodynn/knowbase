@@ -39,7 +39,7 @@ class PermissionResponse(BaseModel):
     kb_id: UUID
     permission: str
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -56,5 +56,4 @@ class KBPermissionListResponse(BaseModel):
     """知识库权限列表响应"""
 
     items: List[PermissionWithUserResponse]
-    total: int
     total: int

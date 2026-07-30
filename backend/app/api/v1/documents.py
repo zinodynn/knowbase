@@ -7,7 +7,6 @@
 import logging
 import math
 import tempfile
-import time
 from pathlib import Path
 from typing import List, Optional
 from uuid import UUID, uuid4
@@ -30,7 +29,6 @@ from app.schemas.document import (
 )
 from app.services import ParserFactory, get_storage_service
 from app.tasks import (
-    delete_document_vectors_task,
     process_document_task,
     process_documents_batch_task,
     reprocess_document_task,
@@ -186,13 +184,13 @@ async def push_document(
     document = Document(
         id=document_id,
         kb_id=kb_id,
-        filename=doc_data.filename,
+        file_name=doc_data.filename,
         file_type=file_type,
         file_size=file_size,
         storage_path=object_name,
         status=DocumentStatus.PENDING,
-        metadata=doc_data.metadata,
-        # created_by=current_user.id, # TODO: 添加创建者信息
+        doc_metadata=doc_data.metadata,
+        source_type=DocumentSourceType.API,
     )
 
     db.add(document)
@@ -217,6 +215,7 @@ async def push_document(
 async def list_documents(
     kb_id: UUID,
     status: Optional[str] = Query(None, description="按状态筛选"),
+    include_inactive: bool = Query(False, description="是否包含版本切换后隐藏的文档"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -229,6 +228,10 @@ async def list_documents(
     # 构建查询
     query = select(Document).where(Document.kb_id == kb_id)
     count_query = select(func.count(Document.id)).where(Document.kb_id == kb_id)
+
+    if not include_inactive:
+        query = query.where(Document.is_active.is_(True))
+        count_query = count_query.where(Document.is_active.is_(True))
 
     if status:
         try:
@@ -322,6 +325,19 @@ async def delete_document(
     # 检查权限
     await check_kb_permission(db, document.kb_id, current_user, require_write=True)
 
+    # 先同步删除向量（chunk 仍在 DB），避免异步任务执行时已被级联删除
+    try:
+        from app.services.document_processor import (
+            DocumentProcessor,
+            get_active_embedding_config,
+        )
+
+        embedding_config = await get_active_embedding_config(db)
+        processor = DocumentProcessor(db, embedding_config=embedding_config)
+        await processor.delete_document_vectors(doc_id)
+    except Exception as e:
+        logger.warning(f"Failed to delete document vectors: {e}")
+
     # 删除 MinIO 中的文件
     if document.storage_path:
         try:
@@ -330,13 +346,18 @@ async def delete_document(
         except Exception as e:
             logger.warning(f"Failed to delete file from storage: {e}")
 
-    # 删除向量数据库中的向量
-    delete_document_vectors_task.delay(str(doc_id), str(document.kb_id))
-
-    # 删除分块（通过级联删除）
-    # 删除文档
+    # 删除文档（分块若仍存在则级联删除）
+    kb_id = document.kb_id
     await db.delete(document)
     await db.commit()
+
+    try:
+        from app.services.kb_stats import refresh_kb_stats
+
+        await refresh_kb_stats(db, kb_id)
+        await db.commit()
+    except Exception as e:
+        logger.warning(f"Failed to refresh KB stats after delete: {e}")
 
 
 @router.post(
@@ -377,7 +398,7 @@ async def reprocess_documents(
             responses.append(
                 DocumentUploadResponse(
                     id=doc_id,
-                    filename=document.filename,
+                    filename=document.file_name,
                     status=DocumentStatus.FAILED,
                     message="Permission denied",
                 )
@@ -465,26 +486,44 @@ async def search_documents(
     current_user: User = Depends(get_current_user),
 ):
     """
-    在知识库中搜索文档
-
-    使用向量相似度搜索
+    在知识库中搜索文档（转发到统一检索管道）
     """
-    start_time = time.time()
+    from app.api.v1.search import (
+        SearchRequest as AdvancedSearchRequest,
+        search as advanced_search,
+    )
 
-    # 检查知识库权限
-    kb = await check_kb_permission(db, kb_id, current_user, require_write=False)
+    await check_kb_permission(db, kb_id, current_user, require_write=False)
 
-    # TODO: 实现向量搜索
-    # 1. 将查询文本向量化
-    # 2. 在向量数据库中搜索
-    # 3. 根据结果获取文档和分块信息
+    advanced_request = AdvancedSearchRequest(
+        query=request.query,
+        knowledge_base_id=str(kb_id),
+        mode="hybrid",
+        top_k=request.top_k,
+        score_threshold=0.0,
+        use_cache=True,
+    )
+    advanced_result = await advanced_search(
+        request=advanced_request,
+        db=db,
+        current_user=current_user,
+    )
 
-    # 临时返回空结果
-    took_ms = int((time.time() - start_time) * 1000)
+    hits = [
+        SearchHit(
+            chunk_id=str(item.chunk_id),
+            document_id=str(item.document_id),
+            document_filename=item.document_name or "",
+            content=item.content,
+            score=item.score,
+            metadata=item.metadata or {},
+        )
+        for item in advanced_result.results
+    ]
 
     return SearchResponse(
         query=request.query,
-        hits=[],
-        total=0,
-        took_ms=took_ms,
+        hits=hits,
+        total=advanced_result.total,
+        took_ms=int(advanced_result.took_ms),
     )

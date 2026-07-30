@@ -54,11 +54,16 @@ const SearchPage: React.FC = () => {
     setLoading(true);
     setSearched(true);
     try {
-      const response = await searchApi.search(kbId, query, topK, searchType);
-      const hits = response.data.hits || response.data.results || response.data || [];
-      // Filter by score threshold
-      const filteredHits = hits.filter((h: SearchResult) => h.score >= scoreThreshold);
-      setResults(filteredHits);
+      const response = await searchApi.search(kbId, query, topK, searchType, scoreThreshold);
+      const hits = (response.data.results || response.data.hits || []).map((h: any) => ({
+        chunk_id: h.chunk_id,
+        document_id: h.document_id,
+        document_name: h.document_name || h.document_filename || '',
+        content: h.content,
+        score: h.score,
+        metadata: h.metadata,
+      }));
+      setResults(hits);
     } catch (error: any) {
       message.error(error.response?.data?.detail || '搜索失败');
       setResults([]);

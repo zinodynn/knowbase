@@ -383,7 +383,8 @@ class CachedRetrievalPipeline:
         config = SearchConfig(
             top_k=top_k,
             score_threshold=score_threshold,
-            filters=filters or {},
+            document_ids=(filters or {}).get("document_ids"),
+            metadata_filters=(filters or {}).get("metadata") or {},
         )
 
         # 尝试从缓存获取

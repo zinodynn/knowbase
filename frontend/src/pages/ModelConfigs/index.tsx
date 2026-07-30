@@ -146,11 +146,16 @@ const ModelConfigsPage: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
+      const payload = { ...values };
+      // 编辑时留空 API Key 表示保留原密钥，不要传空串
+      if (editingConfig && !payload.api_key) {
+        delete payload.api_key;
+      }
       if (editingConfig) {
-        await modelApi.update(editingConfig.id, values);
+        await modelApi.update(editingConfig.id, payload);
         message.success('更新成功');
       } else {
-        await modelApi.create(values);
+        await modelApi.create(payload);
         message.success('创建成功');
       }
       setModalVisible(false);

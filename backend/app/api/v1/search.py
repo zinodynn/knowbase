@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from app.api.deps import get_current_user, get_db
 from app.core.config import settings
+from app.core.database import async_session_maker
 from app.models.knowledge_base import KnowledgeBase
 from app.models.permission import PermissionLevel, UserKBPermission
 from app.models.user import User
@@ -201,6 +202,12 @@ async def check_kb_access(
 
     # 检查权限
     if kb.owner_id != user.id and not user.is_superuser:
+        from app.models.knowledge_base import KBVisibility
+
+        # 公开知识库允许读取
+        if kb.visibility == KBVisibility.PUBLIC:
+            return kb
+
         # 检查共享权限
         perm_stmt = select(UserKBPermission).where(
             UserKBPermission.kb_id == knowledge_base_id,
@@ -282,8 +289,27 @@ async def search(
             detail=f"无效的检索模式: {request.mode}",
         )
 
-    # 构建过滤条件
+    # 构建过滤条件（默认限制在激活文档内）
     filters = build_filters(request.filters)
+    from app.services.kb_stats import get_active_document_ids
+
+    active_doc_ids = await get_active_document_ids(db, kb.id)
+    if request.filters and request.filters.document_ids:
+        requested = set(request.filters.document_ids)
+        filters["document_ids"] = [d for d in active_doc_ids if d in requested]
+    else:
+        filters["document_ids"] = active_doc_ids
+
+    if not filters["document_ids"]:
+        return SearchResponse(
+            query=request.query,
+            mode=request.mode,
+            total=0,
+            results=[],
+            took_ms=0,
+            from_cache=False,
+            metadata={"knowledge_base_name": kb.name, "empty_reason": "no_active_documents"},
+        )
 
     # 构建混合配置
     hybrid_config = {}
@@ -336,7 +362,7 @@ async def search(
         embedding_service=embedding_service,
         vector_store=vector_store,
         keyword_backend="postgresql",
-        keyword_config={"connection_url": settings.DATABASE_URL},
+        keyword_config={"db_session_factory": async_session_maker},
         hybrid_config=hybrid_config,
         rerank_provider=rerank_provider,
         rerank_api_key=rerank_api_key,
@@ -345,7 +371,7 @@ async def search(
 
     # 初始化缓存
     cache = SearchCache(
-        redis_url=settings.REDIS_URL,
+        redis_url=settings.redis_url,
         config=CacheConfig(enabled=request.use_cache),
     )
 
@@ -356,7 +382,8 @@ async def search(
         config = SearchConfig(
             top_k=request.top_k,
             score_threshold=request.score_threshold,
-            filters=filters,
+            document_ids=filters.get("document_ids"),
+            metadata_filters=filters.get("metadata") or {},
         )
         cached = await cache.get(
             query=request.query,
@@ -400,9 +427,10 @@ async def search(
         item = SearchResultItem(
             chunk_id=r.chunk_id,
             document_id=r.document_id,
+            document_name=getattr(r, "document_filename", None) or None,
             content=r.content,
             score=r.score,
-            metadata=r.metadata,
+            metadata=r.metadata if isinstance(r.metadata, dict) else {},
         )
         result_items.append(item)
 
@@ -492,7 +520,7 @@ async def clear_cache(
     if kb.owner_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="需要知识库所有者权限")
 
-    cache = SearchCache(redis_url=settings.REDIS_URL)
+    cache = SearchCache(redis_url=settings.redis_url)
     deleted = await cache.invalidate_knowledge_base(knowledge_base_id)
     await cache.close()
 
@@ -513,7 +541,7 @@ async def search_stats(
     if not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="需要管理员权限")
 
-    cache = SearchCache(redis_url=settings.REDIS_URL)
+    cache = SearchCache(redis_url=settings.redis_url)
     stats = await cache.get_stats()
     await cache.close()
 

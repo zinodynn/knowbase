@@ -37,7 +37,6 @@ class ApiKeyResponse(BaseModel):
 
     id: UUID
     key_name: str
-    key_hash: str
     key_prefix: str
     description: Optional[str]
     is_active: bool
@@ -59,5 +58,4 @@ class ApiKeyListResponse(BaseModel):
     """API Key 列表响应"""
 
     items: List[ApiKeyResponse]
-    total: int
     total: int

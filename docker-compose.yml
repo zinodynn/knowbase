@@ -48,8 +48,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "19000:9000"
-      - "19001:9001"
+      - "9000:9000"
+      - "9001:9001"
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]

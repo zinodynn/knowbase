@@ -58,6 +58,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: response.data, isAuthenticated: true, isLoading: false });
     } catch {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },

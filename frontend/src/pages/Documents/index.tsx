@@ -229,6 +229,12 @@ const DocumentsPage: React.FC = () => {
           <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/knowledge-bases')}>
             返回
           </Button>
+          <Button onClick={() => navigate(`/knowledge-bases/${kbId}/search`)}>
+            搜索
+          </Button>
+          <Button onClick={() => navigate(`/knowledge-bases/${kbId}/versions`)}>
+            版本管理
+          </Button>
         </Space>
         
         {kb && (

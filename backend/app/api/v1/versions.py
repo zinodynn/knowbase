@@ -5,11 +5,9 @@
 """
 
 import uuid
-from typing import Optional
 
-from app.api.deps import get_current_user
+from app.api.deps import check_kb_permission, get_current_user
 from app.core.database import get_db
-from app.models.knowledge_base import KnowledgeBase
 from app.models.user import User
 from app.schemas.version import (
     VersionCompareResponse,
@@ -25,19 +23,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter()
 
 
-async def check_kb_exists(
-    kb_id: uuid.UUID, db: AsyncSession
-) -> KnowledgeBase:
-    """验证知识库存在"""
+async def _get_version_or_404(version_id: uuid.UUID, db: AsyncSession):
+    """获取版本并校验存在"""
     from sqlalchemy import select
 
-    result = await db.execute(select(KnowledgeBase).where(KnowledgeBase.id == kb_id))
-    kb = result.scalar_one_or_none()
-    if not kb:
+    from app.models.vcs import KBVersion
+
+    result = await db.execute(select(KBVersion).where(KBVersion.id == version_id))
+    version = result.scalar_one_or_none()
+    if not version:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="知识库不存在"
+            status_code=status.HTTP_404_NOT_FOUND, detail="版本不存在"
         )
-    return kb
+    return version
 
 
 @router.post(
@@ -57,7 +55,7 @@ async def create_snapshot(
 
     保存当前所有文档和分块的元信息，生成新的版本号。
     """
-    await check_kb_exists(kb_id, db)
+    await check_kb_permission(db, kb_id, current_user, require_write=True)
 
     manager = VersionManager(db)
     try:
@@ -100,7 +98,7 @@ async def list_versions(
     """
     获取知识库的版本列表（分页）
     """
-    await check_kb_exists(kb_id, db)
+    await check_kb_permission(db, kb_id, current_user, require_write=False)
 
     manager = VersionManager(db)
     versions, total = await manager.list_versions(kb_id, page, page_size)
@@ -145,6 +143,9 @@ async def compare_versions(
 
     返回新增文档、删除文档、修改文档列表。
     """
+    version1 = await _get_version_or_404(v1, db)
+    await check_kb_permission(db, version1.kb_id, current_user, require_write=False)
+
     manager = VersionManager(db)
     try:
         result = await manager.compare_versions(v1, v2)
@@ -166,6 +167,9 @@ async def get_version_detail(
     """
     获取版本详情（含快照内容）
     """
+    version = await _get_version_or_404(version_id, db)
+    await check_kb_permission(db, version.kb_id, current_user, require_write=False)
+
     manager = VersionManager(db)
     detail = await manager.get_version_detail(version_id)
 
@@ -192,6 +196,9 @@ async def switch_version(
 
     会将当前知识库的文档和分块状态恢复到目标版本的快照状态。
     """
+    existing = await _get_version_or_404(version_id, db)
+    await check_kb_permission(db, existing.kb_id, current_user, require_write=True)
+
     manager = VersionManager(db)
     try:
         version = await manager.switch_version(version_id)
@@ -226,6 +233,9 @@ async def delete_version(
     """
     删除指定版本（不可删除当前激活版本）
     """
+    existing = await _get_version_or_404(version_id, db)
+    await check_kb_permission(db, existing.kb_id, current_user, require_write=True)
+
     manager = VersionManager(db)
     try:
         await manager.delete_version(version_id)

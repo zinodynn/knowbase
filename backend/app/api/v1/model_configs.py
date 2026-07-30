@@ -165,13 +165,11 @@ async def update_model_config(
     # 更新字段
     update_data = config_in.model_dump(exclude_unset=True)
 
-    # 处理 API Key 加密
+    # 处理 API Key 加密（空字符串表示保留原密钥）
     if "api_key" in update_data:
         api_key = update_data.pop("api_key")
         if api_key:
             config.api_key_encrypted = encryption_service.encrypt(api_key)
-        else:
-            config.api_key_encrypted = None
 
     # 如果设置为默认，取消其他同类型的默认设置
     if update_data.get("is_default"):

@@ -98,7 +98,7 @@ class PostgresKeywordSearch(KeywordSearch):
                     c.content,
                     c.chunk_index,
                     c.metadata,
-                    d.filename as document_filename,
+                    d.file_name as document_filename,
                     ts_rank_cd(
                         to_tsvector('{self.text_search_config}', c.content),
                         plainto_tsquery('{self.text_search_config}', :query)
@@ -189,7 +189,7 @@ class PostgresKeywordSearch(KeywordSearch):
                     c.content,
                     c.chunk_index,
                     c.metadata,
-                    d.filename as document_filename,
+                    d.file_name as document_filename,
                     1.0 as rank
                 FROM chunks c
                 JOIN documents d ON c.document_id = d.id

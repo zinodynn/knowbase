@@ -69,16 +69,21 @@ class VersionManager:
                 and_(
                     Document.kb_id == kb_id,
                     Document.status != DocumentStatus.FAILED,
+                    Document.is_active == True,
                 )
             )
         )
         documents = documents_result.scalars().all()
 
-        # 2. 获取所有分块信息
-        chunks_result = await self.db.execute(
-            select(Chunk).where(Chunk.kb_id == kb_id)
-        )
-        chunks = chunks_result.scalars().all()
+        # 2. 获取激活文档的分块信息
+        active_doc_ids = [doc.id for doc in documents]
+        if active_doc_ids:
+            chunks_result = await self.db.execute(
+                select(Chunk).where(Chunk.document_id.in_(active_doc_ids))
+            )
+            chunks = chunks_result.scalars().all()
+        else:
+            chunks = []
 
         # 按 document_id 组织分块
         chunks_by_doc: Dict[uuid.UUID, List[Dict[str, Any]]] = {}
@@ -252,21 +257,17 @@ class VersionManager:
         """
         切换到指定版本（非破坏性）
 
-        仅切换 is_active 标记并更新知识库统计信息，
-        不删除任何文档、分块或向量数据，保证切换安全可逆。
+        1. 切换 is_active 版本标记
+        2. 按快照调整文档 is_active 可见性（不删文档/向量）
+        3. 更新知识库统计信息
 
-        Steps:
-        1. 验证目标版本存在
-        2. 将所有当前激活版本设为 is_active=False
-        3. 将目标版本设为 is_active=True
-        4. 更新知识库统计信息（version, document_count, chunk_count）
-
-        Args:
-            version_id: 目标版本 ID
-
-        Returns:
-            激活的 KBVersion 实例
+        说明：快照创建后已物理删除的文档无法恢复（FK SET NULL）。
         """
+        from app.services.kb_stats import (
+            apply_version_document_visibility,
+            refresh_kb_stats,
+        )
+
         # 1. 验证目标版本存在
         target_version = await self.db.get(KBVersion, version_id)
         if not target_version:
@@ -290,19 +291,28 @@ class VersionManager:
         # 3. 将目标版本设为激活
         target_version.is_active = True
 
-        # 4. 更新知识库统计信息
+        # 4. 按快照调整文档可见性
+        snapshots_result = await self.db.execute(
+            select(VersionSnapshot).where(VersionSnapshot.version_id == version_id)
+        )
+        snapshots = snapshots_result.scalars().all()
+        await apply_version_document_visibility(
+            self.db,
+            kb_id,
+            [s.document_id for s in snapshots],
+        )
+
+        # 5. 更新知识库统计信息
         kb = await self.db.get(KnowledgeBase, kb_id)
         if kb:
             kb.version = target_version.version
-            kb.document_count = target_version.document_count
-            kb.chunk_count = target_version.chunk_count
+        await refresh_kb_stats(self.db, kb_id)
 
         await self.db.flush()
         logger.info(
             f"版本切换成功（非破坏性）: kb_id={kb_id}, "
             f"to_version={target_version.version}, "
-            f"document_count={target_version.document_count}, "
-            f"chunk_count={target_version.chunk_count}"
+            f"snapshot_docs={len(snapshots)}"
         )
 
         return target_version
@@ -445,8 +455,8 @@ class VersionManager:
             return
 
         try:
-            from app.services.vector_store.qdrant_store import QdrantVectorStore
             from app.services.vector_store.base import VectorStoreConfig
+            from app.services.vector_store.qdrant_store import QdrantVectorStore
 
             config = VectorStoreConfig(
                 host=settings.QDRANT_HOST or "localhost",
@@ -454,16 +464,7 @@ class VersionManager:
                 api_key=settings.QDRANT_API_KEY,
             )
             store = QdrantVectorStore(config)
-            collection_name = f"kb_{kb_id}"
-
-            for vid in vector_ids:
-                if vid:
-                    try:
-                        store.client.delete(
-                            collection_name=collection_name,
-                            points_selector=[vid],
-                        )
-                    except Exception as e:
-                        logger.warning(f"删除向量失败: vector_id={vid}, error={e}")
+            collection_name = store.get_collection_name(str(kb_id))
+            await store.delete_vectors(collection_name, vector_ids)
         except Exception as e:
             logger.warning(f"向量数据库操作失败: {e}")

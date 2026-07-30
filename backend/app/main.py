@@ -66,7 +66,7 @@ KnowBase 知识库管理系统 API
 # CORS 中间件配置
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,7 +81,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
     return JSONResponse(
         status_code=500,
-        content={"detail": "服务器内部错误", "error_type": type(exc).__name__},
+        content={"detail": "服务器内部错误"},
     )
 
 

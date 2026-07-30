@@ -9,7 +9,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DocumentStatus(str, Enum):
@@ -24,15 +24,16 @@ class DocumentStatus(str, Enum):
 class ChunkResponse(BaseModel):
     """分块响应"""
 
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     id: UUID
     content: str
     chunk_index: int
     token_count: int
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, validation_alias="doc_metadata"
+    )
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class DocumentCreate(BaseModel):
@@ -134,8 +135,8 @@ class SearchRequest(BaseModel):
 class SearchHit(BaseModel):
     """搜索结果项"""
 
-    chunk_id: UUID
-    document_id: UUID
+    chunk_id: str
+    document_id: str
     document_filename: str
     content: str
     score: float

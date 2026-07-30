@@ -8,7 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
 from app.core.database import Base
-from sqlalchemy import BigInteger, DateTime
+from sqlalchemy import BigInteger, Boolean, DateTime
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
@@ -72,6 +72,13 @@ class Document(Base):
     )
     chunk_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+        index=True,
+        comment="是否在当前激活版本中可见",
+    )
     doc_metadata: Mapped[Optional[dict]] = mapped_column(
         "metadata", JSON, nullable=True
     )

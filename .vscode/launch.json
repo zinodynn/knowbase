@@ -9,25 +9,6 @@
             "args": [
                 "app.main:app",
                 "--host", "0.0.0.0",
-                "--port", "8000",
-                "--reload"
-            ],
-            "cwd": "${workspaceFolder}/backend",
-            "envFile": "${workspaceFolder}/backend/.env",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend"
-            },
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
-            "name": "FastAPI: Backend (No Reload)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "app.main:app",
-                "--host", "0.0.0.0",
                 "--port", "8000"
             ],
             "cwd": "${workspaceFolder}/backend",
@@ -39,23 +20,18 @@
             "justMyCode": false
         },
         {
+            "name": "Frontend: Chrome Debug",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}/frontend/src",
+            "preLaunchTask": "frontend-dev"
+        },
+        {
             "name": "Python: Init Database",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/backend/scripts/init_db.py",
-            "cwd": "${workspaceFolder}/backend",
-            "envFile": "${workspaceFolder}/backend/.env",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend"
-            },
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Python: Run Alembic Migration",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "alembic",
-            "args": ["upgrade", "head"],
             "cwd": "${workspaceFolder}/backend",
             "envFile": "${workspaceFolder}/backend/.env",
             "env": {
@@ -80,11 +56,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
-            "args": [
-                "-v",
-                "--tb=short",
-                "tests/"
-            ],
+            "args": ["-v", "--tb=short", "tests/"],
             "cwd": "${workspaceFolder}/backend",
             "envFile": "${workspaceFolder}/backend/.env",
             "env": {
@@ -98,11 +70,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
-            "args": [
-                "-v",
-                "--tb=short",
-                "${file}"
-            ],
+            "args": ["-v", "--tb=short", "${file}"],
             "cwd": "${workspaceFolder}/backend",
             "envFile": "${workspaceFolder}/backend/.env",
             "env": {
@@ -112,7 +80,7 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Celery: Worker (Document Queue)",
+            "name": "Celery: Worker",
             "type": "debugpy",
             "request": "launch",
             "module": "celery",
@@ -130,29 +98,12 @@
             },
             "console": "integratedTerminal",
             "justMyCode": false
-        },
-        {
-            "name": "Celery: Flower Monitor",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "celery",
-            "args": [
-                "-A", "app.tasks.celery_app",
-                "flower",
-                "--port=5555"
-            ],
-            "cwd": "${workspaceFolder}/backend",
-            "envFile": "${workspaceFolder}/backend/.env",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/backend"
-            },
-            "console": "integratedTerminal"
         }
     ],
     "compounds": [
         {
-            "name": "Full Stack: Backend + Docker Services",
-            "configurations": ["FastAPI: Backend"],
+            "name": "Full Stack: Frontend + Backend",
+            "configurations": ["FastAPI: Backend", "Frontend: Chrome Debug"],
             "preLaunchTask": "docker-compose-up",
             "stopAll": true
         }

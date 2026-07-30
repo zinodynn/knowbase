@@ -242,8 +242,18 @@ async def delete_knowledge_base(
     """
     删除知识库
 
-    注意：只有所有者和超级管理员可以删除知识库
+    注意：只有所有者和超级管理员可以删除知识库。
+    会同步清理 MinIO 对象与 Qdrant collection。
     """
+    import logging
+
+    from app.core.config import settings
+    from app.services.storage import get_storage_service
+    from app.services.vector_store.base import VectorStoreConfig
+    from app.services.vector_store.qdrant_store import QdrantVectorStore
+
+    logger = logging.getLogger(__name__)
+
     kb = await check_kb_permission(kb_id, current_user, db, "admin")
 
     # 非超级用户只能删除自己的知识库
@@ -251,6 +261,30 @@ async def delete_knowledge_base(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="只有所有者可以删除知识库"
         )
+
+    # 清理 MinIO
+    try:
+        storage = get_storage_service()
+        deleted = await storage.delete_by_prefix(f"knowledge_bases/{kb_id}/")
+        logger.info(f"Deleted {deleted} MinIO objects for kb {kb_id}")
+    except Exception as e:
+        logger.warning(f"Failed to cleanup MinIO for kb {kb_id}: {e}")
+
+    # 清理 Qdrant collection
+    try:
+        vector_store = QdrantVectorStore(
+            VectorStoreConfig(
+                host=settings.QDRANT_HOST or "localhost",
+                port=settings.QDRANT_PORT or 6333,
+                api_key=settings.QDRANT_API_KEY,
+            )
+        )
+        collection_name = vector_store.get_collection_name(str(kb_id))
+        if await vector_store.collection_exists(collection_name):
+            await vector_store.delete_collection(collection_name)
+            logger.info(f"Deleted Qdrant collection {collection_name}")
+    except Exception as e:
+        logger.warning(f"Failed to cleanup Qdrant for kb {kb_id}: {e}")
 
     await db.delete(kb)
     await db.commit()
@@ -271,16 +305,25 @@ async def get_knowledge_base_stats(
 
     kb = await check_kb_permission(kb_id, current_user, db, "read")
 
-    # 获取文档总大小
+    # 实时统计（与 kb.document_count 缓存对齐）
+    from app.services.kb_stats import refresh_kb_stats
+
+    await refresh_kb_stats(db, kb_id)
+    await db.commit()
+    await db.refresh(kb)
+
+    # 获取文档总大小（仅激活文档）
     result = await db.execute(
-        select(func.sum(Document.file_size)).where(Document.kb_id == kb_id)
+        select(func.sum(Document.file_size)).where(
+            Document.kb_id == kb_id, Document.is_active.is_(True)
+        )
     )
     total_size = result.scalar() or 0
 
     # 获取最后更新时间
     result = await db.execute(
         select(Document.updated_at)
-        .where(Document.kb_id == kb_id)
+        .where(Document.kb_id == kb_id, Document.is_active.is_(True))
         .order_by(Document.updated_at.desc())
         .limit(1)
     )

@@ -282,15 +282,15 @@ class RetrievalPipeline:
         config = SearchConfig(
             top_k=initial_top_k,
             score_threshold=0,  # 不在检索阶段过滤
-            filters=filters or {},
+            document_ids=(filters or {}).get("document_ids"),
+            metadata_filters=(filters or {}).get("metadata") or {},
         )
 
-        # 执行检索
+        # 执行检索（统一 BaseRetriever 签名）
         results = await self.retriever.search(
+            kb_id=knowledge_base_id,
             query=query,
-            knowledge_base_id=knowledge_base_id,
             config=config,
-            filters=filters,
         )
 
         # 重排序

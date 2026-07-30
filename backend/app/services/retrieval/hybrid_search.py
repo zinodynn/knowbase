@@ -81,18 +81,16 @@ class HybridRetriever(BaseRetriever):
 
     async def search(
         self,
+        kb_id: str,
         query: str,
-        knowledge_base_id: str,
         config: Optional[SearchConfig] = None,
-        filters: Optional[Dict[str, Any]] = None,
     ) -> List[SearchResult]:
         """执行混合检索
 
         Args:
+            kb_id: 知识库ID
             query: 查询文本
-            knowledge_base_id: 知识库ID
             config: 检索配置
-            filters: 过滤条件
 
         Returns:
             融合后的检索结果列表
@@ -107,32 +105,34 @@ class HybridRetriever(BaseRetriever):
         retriever_config = SearchConfig(
             top_k=hybrid_config.retriever_top_k,
             score_threshold=0,  # 不在子检索器中过滤
-            filters=hybrid_config.filters,
+            document_ids=hybrid_config.document_ids,
+            metadata_filters=hybrid_config.metadata_filters,
         )
+
+        async def _empty_results() -> List[SearchResult]:
+            return []
 
         if hybrid_config.enable_semantic:
             tasks.append(
                 self.semantic_retriever.search(
+                    kb_id=kb_id,
                     query=query,
-                    knowledge_base_id=knowledge_base_id,
                     config=retriever_config,
-                    filters=filters,
                 )
             )
         else:
-            tasks.append(asyncio.coroutine(lambda: [])())
+            tasks.append(_empty_results())
 
         if hybrid_config.enable_keyword:
             tasks.append(
                 self.keyword_retriever.search(
+                    kb_id=kb_id,
                     query=query,
-                    knowledge_base_id=knowledge_base_id,
                     config=retriever_config,
-                    filters=filters,
                 )
             )
         else:
-            tasks.append(asyncio.coroutine(lambda: [])())
+            tasks.append(_empty_results())
 
         # 等待所有检索完成
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -515,10 +515,9 @@ class AdaptiveHybridRetriever(HybridRetriever):
 
     async def search(
         self,
+        kb_id: str,
         query: str,
-        knowledge_base_id: str,
         config: Optional[SearchConfig] = None,
-        filters: Optional[Dict[str, Any]] = None,
     ) -> List[SearchResult]:
         """执行自适应混合检索"""
         # 分析查询特征
@@ -529,10 +528,9 @@ class AdaptiveHybridRetriever(HybridRetriever):
 
         # 执行混合检索
         return await super().search(
+            kb_id=kb_id,
             query=query,
-            knowledge_base_id=knowledge_base_id,
             config=adjusted_config,
-            filters=filters,
         )
 
     def _analyze_query(self, query: str) -> Dict[str, Any]:
@@ -608,7 +606,8 @@ class AdaptiveHybridRetriever(HybridRetriever):
         return HybridConfig(
             top_k=base_config.top_k,
             score_threshold=base_config.score_threshold,
-            filters=base_config.filters,
+            document_ids=base_config.document_ids,
+            metadata_filters=base_config.metadata_filters,
             fusion_strategy=base_config.fusion_strategy,
             semantic_weight=semantic_weight,
             keyword_weight=keyword_weight,

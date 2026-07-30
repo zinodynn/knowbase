@@ -188,6 +188,15 @@ class DocumentProcessor:
             document.processed_at = datetime.now(timezone.utc)
             await self.db.commit()
 
+            # 10. 刷新知识库统计
+            try:
+                from app.services.kb_stats import refresh_kb_stats
+
+                await refresh_kb_stats(self.db, document.kb_id)
+                await self.db.commit()
+            except Exception as stats_err:
+                logger.warning(f"Failed to refresh KB stats: {stats_err}")
+
             elapsed_ms = int((time.time() - start_time) * 1000)
 
             logger.info(

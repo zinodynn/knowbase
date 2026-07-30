@@ -118,12 +118,16 @@ async def _get_user_from_api_key(api_key: str, db: AsyncSession) -> User:
             detail="API Key 已被禁用",
         )
 
-    # 检查是否过期
-    if api_key_obj.expires_at and api_key_obj.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="API Key 已过期",
-        )
+    # 检查是否过期（兼容 naive/aware datetime）
+    if api_key_obj.expires_at:
+        expires_at = api_key_obj.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="API Key 已过期",
+            )
 
     # 更新最后使用时间
     api_key_obj.last_used_at = datetime.now(timezone.utc)
@@ -201,6 +205,7 @@ async def check_kb_permission(
         HTTPException: 权限不足或知识库不存在
     """
     from app.models import KnowledgeBase, PermissionLevel, UserKBPermission
+    from app.models.knowledge_base import KBVisibility
 
     # 获取知识库
     result = await db.execute(select(KnowledgeBase).where(KnowledgeBase.id == kb_id))
@@ -220,6 +225,10 @@ async def check_kb_permission(
     if kb.owner_id == user.id:
         return kb
 
+    # 公开知识库允许只读访问
+    if not require_write and kb.visibility == KBVisibility.PUBLIC:
+        return kb
+
     # 检查权限表
     result = await db.execute(
         select(UserKBPermission).where(
@@ -236,7 +245,7 @@ async def check_kb_permission(
         )
 
     # 检查写权限
-    if require_write and permission.level == PermissionLevel.READ:
+    if require_write and permission.permission == PermissionLevel.READ:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Write permission required",

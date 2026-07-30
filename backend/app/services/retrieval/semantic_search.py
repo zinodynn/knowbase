@@ -81,7 +81,8 @@ class SemanticSearch(BaseRetriever):
                         content=vr.payload.get("content", ""),
                         score=vr.score,
                         chunk_index=vr.payload.get("chunk_index", 0),
-                        document_filename=vr.payload.get("filename", ""),
+                        document_filename=vr.payload.get("file_name")
+                        or vr.payload.get("filename", ""),
                         metadata=vr.payload,
                     )
                 )
