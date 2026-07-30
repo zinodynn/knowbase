@@ -11,8 +11,20 @@ const App: React.FC = () => {
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 6,
+          colorPrimary: '#155eef',
+          colorBgLayout: '#f7f8fa',
+          borderRadius: 10,
+          fontFamily:
+            "Inter, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+        },
+        components: {
+          Layout: {
+            headerBg: 'transparent',
+            bodyBg: 'transparent',
+          },
+          Card: {
+            borderRadiusLG: 12,
+          },
         },
       }}
     >

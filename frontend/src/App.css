@@ -4,39 +4,27 @@
   height: 100%;
 }
 
-/* Ant Design overrides */
-.ant-layout {
-  min-height: 100vh;
-}
-
 .ant-card {
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .ant-table-wrapper {
   background: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
-@keyframes logo-spin {
+/* Soften page chrome inside the new shell */
+.kb-main > div {
+  animation: kb-page-in 0.22s ease;
+}
+
+@keyframes kb-page-in {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translateY(4px);
   }
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translateY(0);
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }

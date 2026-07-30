@@ -1,14 +1,35 @@
 import React, { useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Space, Typography, Spin } from 'antd';
-import { 
-  FolderOutlined, SettingOutlined, UserOutlined, 
-  LogoutOutlined, ApiOutlined
+import { Avatar, Dropdown, Space, Typography, Spin } from 'antd';
+import {
+  FolderOutlined,
+  SettingOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores';
+import './MainLayout.css';
 
-const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
+
+const NAV_ITEMS = [
+  {
+    key: '/knowledge-bases',
+    icon: <FolderOutlined />,
+    label: '知识库',
+  },
+  {
+    key: '/model-configs',
+    icon: <ApiOutlined />,
+    label: '模型',
+  },
+  {
+    key: '/settings',
+    icon: <SettingOutlined />,
+    label: '设置',
+  },
+];
 
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -23,38 +44,19 @@ const MainLayout: React.FC = () => {
     if (!isLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, isAuthenticated, navigate]);
 
   if (isLoading) {
     return (
-      <div style={{ 
-        height: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
-      }}>
+      <div className="kb-shell-loading">
         <Spin size="large" tip="加载中..." />
       </div>
     );
   }
 
-  const menuItems = [
-    {
-      key: '/knowledge-bases',
-      icon: <FolderOutlined />,
-      label: '知识库',
-    },
-    {
-      key: '/model-configs',
-      icon: <ApiOutlined />,
-      label: '模型配置',
-    },
-    {
-      key: '/settings',
-      icon: <SettingOutlined />,
-      label: '设置',
-    },
-  ];
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const userMenuItems = [
     {
@@ -62,9 +64,7 @@ const MainLayout: React.FC = () => {
       icon: <UserOutlined />,
       label: '个人信息',
     },
-    {
-      type: 'divider' as const,
-    },
+    { type: 'divider' as const },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -72,10 +72,6 @@ const MainLayout: React.FC = () => {
       danger: true,
     },
   ];
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key);
-  };
 
   const handleUserMenuClick = ({ key }: { key: string }) => {
     if (key === 'logout') {
@@ -94,49 +90,50 @@ const MainLayout: React.FC = () => {
     return '/knowledge-bases';
   };
 
+  const selectedKey = getSelectedKey();
+
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" width={220}>
-        <div style={{ 
-          height: 64, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          borderBottom: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          <Text style={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}>
-            📚 KnowBase
-          </Text>
+    <div className="kb-shell">
+      <header className="kb-topbar">
+        <div className="kb-topbar-brand" onClick={() => navigate('/knowledge-bases')}>
+          <span className="kb-brand-mark">KB</span>
+          <span className="kb-brand-name">KnowBase</span>
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[getSelectedKey()]}
-          items={menuItems}
-          onClick={handleMenuClick}
-        />
-      </Sider>
-      <Layout>
-        <Header style={{ 
-          background: '#fff', 
-          padding: '0 24px', 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
-          alignItems: 'center',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.1)'
-        }}>
-          <Dropdown menu={{ items: userMenuItems, onClick: handleUserMenuClick }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-              <Text>{user?.full_name || user?.username}</Text>
+
+        <nav className="kb-topbar-nav" aria-label="主导航">
+          {NAV_ITEMS.map((item) => {
+            const active = selectedKey === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`kb-nav-item${active ? ' is-active' : ''}`}
+                onClick={() => navigate(item.key)}
+              >
+                <span className="kb-nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="kb-topbar-actions">
+          <Dropdown
+            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+            placement="bottomRight"
+          >
+            <Space className="kb-user-trigger" size={8}>
+              <Avatar size={32} icon={<UserOutlined />} className="kb-user-avatar" />
+              <Text className="kb-user-name">{user?.full_name || user?.username}</Text>
             </Space>
           </Dropdown>
-        </Header>
-        <Content style={{ background: '#f0f2f5', minHeight: 'calc(100vh - 64px)' }}>
-          <Outlet />
-        </Content>
-      </Layout>
-    </Layout>
+        </div>
+      </header>
+
+      <main className="kb-main">
+        <Outlet />
+      </main>
+    </div>
   );
 };
 

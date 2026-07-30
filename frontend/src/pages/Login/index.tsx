@@ -45,12 +45,26 @@ const LoginPage: React.FC = () => {
       display: 'flex', 
       alignItems: 'center', 
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      background:
+        'radial-gradient(900px 420px at 50% 0%, rgba(21, 94, 239, 0.12), transparent 55%), #f7f8fa',
     }}>
-      <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+      <Card style={{ width: 400, boxShadow: '0 8px 30px rgba(15, 23, 42, 0.08)', borderRadius: 16 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <Title level={2} style={{ marginBottom: 8 }}>📚 KnowBase</Title>
-          <Text type="secondary">企业级知识库管理系统</Text>
+          <div style={{
+            width: 40,
+            height: 40,
+            margin: '0 auto 12px',
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: 13,
+            background: 'linear-gradient(145deg, #155eef 0%, #0b4db8 100%)',
+          }}>KB</div>
+          <Title level={3} style={{ marginBottom: 8 }}>KnowBase</Title>
+          <Text type="secondary">专注检索的知识库核心</Text>
         </div>
 
         <Tabs activeKey={activeTab} onChange={setActiveTab} centered>
