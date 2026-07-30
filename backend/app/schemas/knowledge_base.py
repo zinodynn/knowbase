@@ -60,6 +60,7 @@ class KnowledgeBaseResponse(BaseModel):
     embedding_dimension: int = 1536
     document_count: int
     chunk_count: int
+    version: int = 0
     owner_id: UUID
     created_at: datetime
     updated_at: datetime

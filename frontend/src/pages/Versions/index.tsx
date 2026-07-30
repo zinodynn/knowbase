@@ -20,7 +20,7 @@ import {
   DiffOutlined,
   HistoryOutlined,
 } from '@ant-design/icons';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { versionApi } from '../../services/api';
 import VersionDiff from './VersionDiff';
 
@@ -48,6 +48,7 @@ interface CompareData {
 
 const VersionsPage: React.FC = () => {
   const { kbId } = useParams<{ kbId: string }>();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<VersionItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -247,7 +248,12 @@ const VersionsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ marginBottom: 12 }}>
+        <Button type="text" onClick={() => navigate(`/knowledge-bases/${kbId}`)}>
+          ← 返回文档
+        </Button>
+      </div>
       <Card
         title={
           <Space>

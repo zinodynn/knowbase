@@ -1,18 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  Card, Table, Button, Space, Upload, message, Modal, 
-  Typography, Descriptions, Tag, Tooltip, Empty
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Card,
+  Table,
+  Button,
+  Space,
+  Upload,
+  message,
+  Modal,
+  Typography,
+  Tag,
+  Tooltip,
+  Empty,
+  Select,
+  Form,
+  Input,
 } from 'antd';
-import { 
-  UploadOutlined, DeleteOutlined, ReloadOutlined, 
-  FileOutlined, ArrowLeftOutlined,
-  CheckCircleOutlined, CloseCircleOutlined, SyncOutlined, ClockCircleOutlined
+import {
+  UploadOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  FileOutlined,
+  ArrowLeftOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  SyncOutlined,
+  ClockCircleOutlined,
+  HistoryOutlined,
+  SearchOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import { kbApi, docApi } from '../../services/api';
+import { kbApi, docApi, versionApi } from '../../services/api';
 import type { UploadProps } from 'antd';
+import './Documents.css';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 interface Document {
   id: string;
@@ -32,6 +54,18 @@ interface KnowledgeBase {
   description?: string;
   document_count: number;
   chunk_count: number;
+  version?: number;
+}
+
+interface VersionItem {
+  id: string;
+  version: number;
+  description?: string;
+  document_count: number;
+  chunk_count: number;
+  is_active: boolean;
+  tags?: string;
+  created_at: string;
 }
 
 const DocumentsPage: React.FC = () => {
@@ -39,12 +73,22 @@ const DocumentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [kb, setKB] = useState<KnowledgeBase | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [versions, setVersions] = useState<VersionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [form] = Form.useForm();
 
-  const fetchKB = async () => {
+  const activeVersion = useMemo(
+    () => versions.find((v) => v.is_active) || null,
+    [versions]
+  );
+
+  const fetchKB = useCallback(async () => {
     if (!kbId) return;
     try {
       const response = await kbApi.get(kbId);
@@ -52,9 +96,9 @@ const DocumentsPage: React.FC = () => {
     } catch {
       message.error('获取知识库信息失败');
     }
-  };
+  }, [kbId]);
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     if (!kbId) return;
     setLoading(true);
     try {
@@ -66,26 +110,46 @@ const DocumentsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [kbId, page]);
+
+  const fetchVersions = useCallback(async () => {
+    if (!kbId) return;
+    try {
+      const response = await versionApi.list(kbId, 1, 50);
+      setVersions(response.data.items || []);
+    } catch {
+      // 无版本时不打扰用户
+      setVersions([]);
+    }
+  }, [kbId]);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([fetchKB(), fetchDocuments(), fetchVersions()]);
+  }, [fetchKB, fetchDocuments, fetchVersions]);
 
   useEffect(() => {
     fetchKB();
-    fetchDocuments();
-  }, [kbId, page]);
+    fetchVersions();
+  }, [fetchKB, fetchVersions]);
 
-  // 轮询处理中的文档状态
   useEffect(() => {
-    const processingDocs = documents.filter(d => d.status === 'processing' || d.status === 'pending');
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  useEffect(() => {
+    const processingDocs = documents.filter(
+      (d) => d.status === 'processing' || d.status === 'pending'
+    );
     if (processingDocs.length > 0) {
       const timer = setInterval(fetchDocuments, 5000);
       return () => clearInterval(timer);
     }
-  }, [documents]);
+  }, [documents, fetchDocuments]);
 
   const handleUpload: UploadProps['customRequest'] = async (options) => {
     const { file, onSuccess, onError } = options;
     if (!kbId) return;
-    
+
     setUploading(true);
     try {
       await docApi.upload(kbId, file as File);
@@ -132,6 +196,48 @@ const DocumentsPage: React.FC = () => {
     }
   };
 
+  const handleSwitchVersion = async (versionId: string) => {
+    if (!versionId || versionId === activeVersion?.id) return;
+    const target = versions.find((v) => v.id === versionId);
+    Modal.confirm({
+      title: `切换到 v${target?.version ?? ''}？`,
+      content: '将按该版本快照调整文档可见性，不会删除数据。',
+      okText: '确认切换',
+      cancelText: '取消',
+      onOk: async () => {
+        setSwitching(true);
+        try {
+          await versionApi.switch(versionId);
+          message.success(`已切换到 v${target?.version}`);
+          setPage(1);
+          await refreshAll();
+        } catch (error: any) {
+          message.error(error.response?.data?.detail || '版本切换失败');
+        } finally {
+          setSwitching(false);
+        }
+      },
+    });
+  };
+
+  const handleCreateSnapshot = async () => {
+    if (!kbId) return;
+    try {
+      const values = await form.validateFields();
+      setSnapshotLoading(true);
+      await versionApi.create(kbId, values);
+      message.success('版本快照已创建');
+      setSnapshotOpen(false);
+      form.resetFields();
+      await refreshAll();
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(error.response?.data?.detail || '创建快照失败');
+    } finally {
+      setSnapshotLoading(false);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -146,7 +252,11 @@ const DocumentsPage: React.FC = () => {
       failed: { color: 'error', icon: <CloseCircleOutlined />, text: '失败' },
     };
     const { color, icon, text } = config[status] || config.pending;
-    return <Tag color={color} icon={icon}>{text}</Tag>;
+    return (
+      <Tag color={color} icon={icon}>
+        {text}
+      </Tag>
+    );
   };
 
   const columns = [
@@ -165,7 +275,7 @@ const DocumentsPage: React.FC = () => {
       title: '类型',
       dataIndex: 'file_type',
       key: 'file_type',
-      render: (text: string) => <Tag>{text.toUpperCase()}</Tag>,
+      render: (text: string) => <Tag>{text?.toUpperCase()}</Tag>,
     },
     {
       title: '大小',
@@ -178,9 +288,7 @@ const DocumentsPage: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: string, record: Document) => (
-        <Tooltip title={record.error_message}>
-          {getStatusTag(status)}
-        </Tooltip>
+        <Tooltip title={record.error_message}>{getStatusTag(status)}</Tooltip>
       ),
     },
     {
@@ -198,21 +306,21 @@ const DocumentsPage: React.FC = () => {
     {
       title: '操作',
       key: 'action',
-      render: (_: any, record: Document) => (
+      render: (_: unknown, record: Document) => (
         <Space>
           {record.status === 'failed' && (
-            <Button 
-              type="link" 
-              icon={<ReloadOutlined />} 
+            <Button
+              type="link"
+              icon={<ReloadOutlined />}
               onClick={() => handleReprocess(record.id)}
             >
               重试
             </Button>
           )}
-          <Button 
-            type="link" 
-            danger 
-            icon={<DeleteOutlined />} 
+          <Button
+            type="link"
+            danger
+            icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id)}
           >
             删除
@@ -223,31 +331,93 @@ const DocumentsPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <Card style={{ marginBottom: 16 }}>
-        <Space style={{ marginBottom: 16 }}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/knowledge-bases')}>
-            返回
+    <div className="docs-page">
+      <div className="docs-header">
+        <div className="docs-header-top">
+          <Button
+            type="text"
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate('/knowledge-bases')}
+          >
+            知识库
           </Button>
-          <Button onClick={() => navigate(`/knowledge-bases/${kbId}/search`)}>
-            搜索
-          </Button>
-          <Button onClick={() => navigate(`/knowledge-bases/${kbId}/versions`)}>
-            版本管理
-          </Button>
-        </Space>
-        
-        {kb && (
-          <Descriptions title={kb.name} bordered column={4}>
-            <Descriptions.Item label="描述" span={2}>{kb.description || '-'}</Descriptions.Item>
-            <Descriptions.Item label="文档数">{kb.document_count}</Descriptions.Item>
-            <Descriptions.Item label="分块数">{kb.chunk_count}</Descriptions.Item>
-          </Descriptions>
-        )}
-      </Card>
+          <Space wrap>
+            <Button
+              icon={<SearchOutlined />}
+              onClick={() => navigate(`/knowledge-bases/${kbId}/search`)}
+            >
+              搜索
+            </Button>
+            <Button
+              icon={<HistoryOutlined />}
+              onClick={() => navigate(`/knowledge-bases/${kbId}/versions`)}
+            >
+              版本管理
+            </Button>
+          </Space>
+        </div>
 
-      <Card 
-        title="文档管理"
+        <div className="docs-header-main">
+          <div className="docs-title-block">
+            <Title level={3} className="docs-title">
+              {kb?.name || '知识库'}
+            </Title>
+            <Text type="secondary" className="docs-desc">
+              {kb?.description || '管理文档、检索与版本'}
+            </Text>
+            <div className="docs-meta">
+              <span>{kb?.document_count ?? 0} 文档</span>
+              <span className="docs-meta-dot" />
+              <span>{kb?.chunk_count ?? 0} 分块</span>
+              <span className="docs-meta-dot" />
+              <span>{total} 当前可见</span>
+            </div>
+          </div>
+
+          <div className="docs-version-bar">
+            <div className="docs-version-label">
+              <HistoryOutlined />
+              <span>当前版本</span>
+              {activeVersion ? (
+                <Tag color="blue" className="docs-version-tag">
+                  v{activeVersion.version}
+                </Tag>
+              ) : (
+                <Tag className="docs-version-tag">尚未创建</Tag>
+              )}
+            </div>
+
+            <Select
+              className="docs-version-select"
+              placeholder={versions.length ? '切换版本' : '暂无版本'}
+              value={activeVersion?.id}
+              loading={switching}
+              disabled={!versions.length || switching}
+              options={versions.map((v) => ({
+                value: v.id,
+                label: `v${v.version}${v.description ? ` · ${v.description}` : ''}${
+                  v.is_active ? '（当前）' : ''
+                }`,
+              }))}
+              onChange={handleSwitchVersion}
+            />
+
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => {
+                form.resetFields();
+                setSnapshotOpen(true);
+              }}
+            >
+              创建快照
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Card
+        className="docs-card"
+        title="文档"
         extra={
           <Space>
             <Upload
@@ -260,7 +430,7 @@ const DocumentsPage: React.FC = () => {
                 上传文档
               </Button>
             </Upload>
-            <Button icon={<ReloadOutlined />} onClick={fetchDocuments}>
+            <Button icon={<ReloadOutlined />} onClick={refreshAll}>
               刷新
             </Button>
           </Space>
@@ -270,7 +440,7 @@ const DocumentsPage: React.FC = () => {
           columns={columns}
           dataSource={documents}
           rowKey="id"
-          loading={loading}
+          loading={loading || switching}
           pagination={{
             current: page,
             total,
@@ -278,17 +448,51 @@ const DocumentsPage: React.FC = () => {
             onChange: setPage,
             showTotal: (t) => `共 ${t} 个文档`,
           }}
-          locale={{ 
+          locale={{
             emptyText: (
-              <Empty description="暂无文档">
+              <Empty
+                description={
+                  activeVersion
+                    ? `当前版本 v${activeVersion.version} 下暂无可见文档`
+                    : '暂无文档'
+                }
+              >
                 <Upload customRequest={handleUpload} showUploadList={false}>
-                  <Button type="primary" icon={<UploadOutlined />}>上传第一个文档</Button>
+                  <Button type="primary" icon={<UploadOutlined />}>
+                    上传文档
+                  </Button>
                 </Upload>
               </Empty>
-            ) 
+            ),
           }}
         />
       </Card>
+
+      <Modal
+        title="创建版本快照"
+        open={snapshotOpen}
+        onOk={handleCreateSnapshot}
+        onCancel={() => setSnapshotOpen(false)}
+        confirmLoading={snapshotLoading}
+        okText="创建"
+        cancelText="取消"
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="description"
+            label="版本描述"
+            rules={[{ required: true, message: '请输入版本描述' }]}
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder="例如：初始版本、新增产品手册..."
+            />
+          </Form.Item>
+          <Form.Item name="tags" label="标签（可选）">
+            <Input placeholder="例如：v1.0, stable" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
